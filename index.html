@@ -1,0 +1,2419 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Growth Tracker Anak - Pemantau Tumbuh Kembang Anak</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tailwind Config untuk Custom Warna Pastel & Cerah -->
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                        },
+                        pastelPink: '#fce7f3',
+                        pastelBlue: '#e0f2fe',
+                        pastelGreen: '#dcfce7',
+                        pastelYellow: '#fef9c3',
+                        pastelPurple: '#f3e8ff',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- jsPDF untuk export laporan -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 transition-colors duration-300 min-h-screen flex flex-col">
+
+    <!-- HEADER / NAVIGATION -->
+    <nav class="sticky top-0 z-40 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border-b border-slate-100 dark:border-slate-700 transition-colors">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <!-- Logo & Brand -->
+                <div class="flex items-center space-x-3 cursor-pointer" onclick="switchTab('dashboard')">
+                    <div class="w-10 h-10 bg-brand-500 rounded-2xl flex items-center justify-center shadow-lg shadow-brand-500/30 text-white transform hover:scale-105 transition-transform">
+                        <i class="fa-solid fa-baby-carriage text-xl"></i>
+                    </div>
+                    <div>
+                        <span class="text-lg font-extrabold tracking-tight bg-gradient-to-r from-brand-600 to-sky-400 bg-clip-text text-transparent">Growth Tracker Anak</span>
+                        <p class="text-[10px] text-slate-400 dark:text-slate-500 font-semibold uppercase tracking-wider">Premium Family Suite</p>
+                    </div>
+                </div>
+
+                <!-- Right Menu -->
+                <div class="flex items-center space-x-2">
+                    <!-- Dark Mode Toggle -->
+                    <button id="themeToggleBtn" onclick="toggleDarkMode()" class="p-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-slate-600 dark:text-slate-300" title="Ubah Tema">
+                        <i id="themeIcon" class="fa-solid fa-moon text-lg"></i>
+                    </button>
+                    <!-- Backup Data -->
+                    <button onclick="backupData()" class="p-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-slate-600 dark:text-slate-300" title="Simpan Cadangan">
+                        <i class="fa-solid fa-cloud-arrow-up text-lg"></i>
+                    </button>
+                    <!-- Restore Data -->
+                    <button onclick="triggerRestoreInput()" class="p-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-slate-600 dark:text-slate-300" title="Pulihkan Data">
+                        <i class="fa-solid fa-cloud-arrow-down text-lg"></i>
+                    </button>
+                    <input type="file" id="restoreFile" class="hidden" accept=".json" onchange="restoreData(event)">
+                    <button id="gas-sync-indicator" onclick="syncToGAS('sync_all')"  class="p-2.5 rounded-xl transition-colors text-slate-400" 
+                        title="Sinkronkan ke Spreadsheet"><i class="fa-solid fa-cloud text-lg"></i></button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- MAIN CONTAINER -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        
+        <!-- TOP ALERT NOTIFICATION CENTER -->
+        <div id="systemAlerts" class="mb-6 space-y-2 hidden">
+            <!-- Dinamis disuntikkan dari JS -->
+        </div>
+
+        <!-- TABS BAR (Desktop-friendly, Mobile scrollable) -->
+        <div class="flex space-x-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl mb-8 overflow-x-auto whitespace-nowrap scrollbar-none">
+            <button id="tab-dashboard" onclick="switchTab('dashboard')" class="flex-1 py-3 px-4 rounded-xl text-sm font-bold transition-all duration-200 flex items-center justify-center space-x-2 bg-white dark:bg-slate-700 text-brand-600 dark:text-white shadow-sm">
+                <i class="fa-solid fa-grid-2 text-base"></i>
+                <span>Dashboard Utama</span>
+            </button>
+            <button id="tab-input-harian" onclick="switchTab('input-harian')" class="flex-1 py-3 px-4 rounded-xl text-sm font-bold transition-all duration-200 flex items-center justify-center space-x-2 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200">
+                <i class="fa-solid fa-calendar-day text-base"></i>
+                <span>Catatan Harian</span>
+            </button>
+            <button id="tab-input-fisik" onclick="switchTab('input-fisik')" class="flex-1 py-3 px-4 rounded-xl text-sm font-bold transition-all duration-200 flex items-center justify-center space-x-2 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200">
+                <i class="fa-solid fa-weight-scale text-base"></i>
+                <span>Pengukuran Fisik</span>
+            </button>
+            <button id="tab-analisis" onclick="switchTab('analisis')" class="flex-1 py-3 px-4 rounded-xl text-sm font-bold transition-all duration-200 flex items-center justify-center space-x-2 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200">
+                <i class="fa-solid fa-chart-line text-base"></i>
+                <span>Kurva & Analisis WHO</span>
+            </button>
+            <button id="tab-nutrisi" onclick="switchTab('nutrisi')" class="flex-1 py-3 px-4 rounded-xl text-sm font-bold transition-all duration-200 flex items-center justify-center space-x-2 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200">
+                <i class="fa-solid fa-apple-whole text-base"></i>
+                <span>Rekomendasi Gizi</span>
+            </button>
+        </div>
+
+        <!-- ACTIVE CHILD SELECTOR (IF MULTIPLE KIDS EXIST) -->
+        <div id="activeChildBanner" class="bg-gradient-to-r from-sky-500 to-indigo-500 text-white p-4 rounded-2xl mb-8 flex flex-col sm:flex-row justify-between items-center gap-4 shadow-lg shadow-sky-500/20 hidden">
+            <div class="flex items-center space-x-3">
+                <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center text-2xl font-bold border border-white/30" id="selectedChildAvatar">
+                    👶
+                </div>
+                <div>
+                    <h3 class="font-extrabold text-lg leading-tight" id="selectedChildName">-</h3>
+                    <p class="text-xs text-white/80" id="selectedChildAge">-</p>
+                </div>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+                <select id="childDropdown" onchange="changeActiveChild(this.value)" class="bg-white/10 border border-white/20 text-white text-sm font-bold rounded-xl px-4 py-2 focus:ring-2 focus:ring-white/50 focus:outline-none cursor-pointer">
+                    <!-- Dropdown anak -->
+                </select>
+                <button onclick="openAddChildModal()" class="bg-white text-sky-600 hover:bg-sky-50 px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5">
+                    <i class="fa-solid fa-plus"></i>
+                    <span>Anak Baru</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- VIEWPORTS -->
+
+        <!-- 1. DASHBOARD TAB -->
+        <div id="view-dashboard" class="space-y-6">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">Keluargaku</h1>
+                    <p class="text-sm text-slate-500 dark:text-slate-400">Pilih atau kelola profil buah hati Anda</p>
+                </div>
+                <button onclick="openAddChildModal()" class="bg-brand-500 hover:bg-brand-600 text-white px-5 py-3 rounded-2xl text-sm font-bold transition-all flex items-center space-x-2 shadow-lg shadow-brand-500/20 transform hover:-translate-y-0.5">
+                    <i class="fa-solid fa-user-plus"></i>
+                    <span>Tambah Data Anak</span>
+                </button>
+            </div>
+
+            <!-- Children Cards Grid -->
+            <div id="childrenGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Card template generated dynamic from JS -->
+            </div>
+
+            <!-- Empty State -->
+            <div id="emptyState" class="hidden text-center py-16 bg-white dark:bg-slate-800 rounded-3xl border border-dashed border-slate-200 dark:border-slate-700 shadow-sm">
+                <div class="w-20 h-20 bg-brand-50 dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-4 text-brand-500">
+                    <i class="fa-solid fa-baby text-3xl"></i>
+                </div>
+                <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-1">Belum ada data anak</h3>
+                <p class="text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto mb-6">Mulai memantau tumbuh kembang si kecil dengan mendaftarkan profil pertamanya.</p>
+                <button onclick="openAddChildModal()" class="bg-brand-500 hover:bg-brand-600 text-white px-6 py-3 rounded-xl text-sm font-bold transition-all">
+                    Tambah Profil Pertama
+                </button>
+            </div>
+        </div>
+
+        <!-- 2. CATATAN HARIAN TAB -->
+        <div id="view-input-harian" class="hidden space-y-6">
+            <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-100 dark:border-slate-700 shadow-sm">
+                <h2 class="text-xl font-extrabold text-slate-900 dark:text-white mb-2 flex items-center gap-2">
+                    <i class="fa-solid fa-pencil text-brand-500"></i>
+                    <span>Catatan Harian Anak</span>
+                </h2>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">Pencatatan aktivitas, pola tidur, makan, serta keluhan kesehatan harian.</p>
+
+                <form id="dailyForm" onsubmit="saveDailyNote(event)" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Tanggal Catatan</label>
+                            <input type="date" id="daily_date" required class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Durasi Tidur (Jam)</label>
+                            <input type="number" id="daily_sleep" min="0" max="24" step="0.5" required placeholder="Contoh: 10" class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Aktivitas Fisik (Menit Aktif)</label>
+                            <input type="number" id="daily_active" min="0" required placeholder="Contoh: 60" class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Nafsu Makan</label>
+                            <select id="daily_appetite" class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-brand-500">
+                                <option value="Sangat Baik">🟢 Sangat Baik</option>
+                                <option value="Normal">🟢 Normal</option>
+                                <option value="Kurang">🟡 Kurang</option>
+                                <option value="Sangat Kurang">🔴 Sangat Kurang</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Konsumsi Susu (ml)</label>
+                            <input type="number" id="daily_milk" placeholder="Contoh: 400" class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-brand-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Frekuensi BAK (kali)</label>
+                            <input type="number" id="daily_bak" placeholder="Contoh: 6" class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-brand-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Kondisi BAB</label>
+                            <select id="daily_bab" class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-brand-500">
+                                <option value="Normal">🟢 Lancar / Normal</option>
+                                <option value="Keras">🟡 Keras / Sembelit</option>
+                                <option value="Cair">🔴 Cair / Diare</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Keluhan Kesehatan / Gejala Medis</label>
+                        <input type="text" id="daily_symptoms" placeholder="Masukkan keluhan jika ada (Batuk, demam, pilek, atau tidak ada)" class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                    </div>
+
+                    <div class="flex justify-end">
+                        <button type="submit" class="bg-brand-500 hover:bg-brand-600 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-all shadow-md">
+                            Simpan Catatan Harian
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- LOG CATATAN HARIAN -->
+            <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-100 dark:border-slate-700 shadow-sm">
+                <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-4">Riwayat Catatan Harian Terbaru</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-400 uppercase">
+                                <th class="pb-3 px-2">Tanggal</th>
+                                <th class="pb-3 px-2">Tidur (Jam)</th>
+                                <th class="pb-3 px-2">Aktivitas (Menit)</th>
+                                <th class="pb-3 px-2">Nafsu Makan</th>
+                                <th class="pb-3 px-2">Susu</th>
+                                <th class="pb-3 px-2">Urasi / BAB</th>
+                                <th class="pb-3 px-2">Keluhan</th>
+                                <th class="pb-3 px-2 text-right">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dailyHistoryTableBody" class="divide-y divide-slate-100 dark:divide-slate-700 text-sm">
+                            <!-- Diisi dinamis -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. PENGUKURAN FISIK TAB -->
+        <div id="view-input-fisik" class="hidden space-y-6">
+            <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-100 dark:border-slate-700 shadow-sm">
+                <h2 class="text-xl font-extrabold text-slate-900 dark:text-white mb-2 flex items-center gap-2">
+                    <i class="fa-solid fa-weight-scale text-brand-500"></i>
+                    <span>Input Pengukuran Pertumbuhan</span>
+                </h2>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">Masukkan data antropometri berkala (mingguan atau bulanan) untuk mengevaluasi grafik pertumbuhan WHO.</p>
+
+                <form id="growthForm" onsubmit="saveGrowthMeasurement(event)" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Tanggal Pengukuran</label>
+                            <input type="date" id="measure_date" required class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-brand-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Berat Badan (kg)</label>
+                            <input type="number" id="measure_weight" step="0.01" min="0.5" required placeholder="Misal: 12.5" class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-brand-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Tinggi / Panjang (cm)</label>
+                            <input type="number" id="measure_height" step="0.1" min="30" required placeholder="Misal: 85.3" class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-brand-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Lingkar Kepala (cm)</label>
+                            <input type="number" id="measure_head" step="0.1" min="20" placeholder="Misal: 45.0" class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-brand-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Lingkar Lengan Atas (cm)</label>
+                            <input type="number" id="measure_muac" step="0.1" min="5" placeholder="Misal: 14.5" class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-brand-500">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Foto Perkembangan (Opsional, URL gambar)</label>
+                        <input type="text" id="measure_photo" placeholder="Masukkan URL foto terupdate si kecil jika ada" class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-brand-500">
+                    </div>
+
+                    <div class="flex justify-end">
+                        <button type="submit" class="bg-brand-500 hover:bg-brand-600 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-all shadow-md">
+                            Simpan Pengukuran Fisik
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- RIWAYAT PENGUKURAN -->
+            <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-100 dark:border-slate-700 shadow-sm">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+                    <h3 class="text-lg font-bold text-slate-900 dark:text-white">Daftar Riwayat Tumbuh Kembang</h3>
+                    <div class="flex gap-2">
+                        <button onclick="exportToCSV()" class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-4 py-2 rounded-xl text-xs transition-all flex items-center space-x-1">
+                            <i class="fa-solid fa-file-excel"></i>
+                            <span>Ekspor Excel (CSV)</span>
+                        </button>
+                        <button onclick="exportToPDF()" class="bg-rose-500 hover:bg-rose-600 text-white font-bold px-4 py-2 rounded-xl text-xs transition-all flex items-center space-x-1">
+                            <i class="fa-solid fa-file-pdf"></i>
+                            <span>Ekspor Laporan PDF</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-400 uppercase">
+                                <th class="pb-3 px-2">Tanggal</th>
+                                <th class="pb-3 px-2">Umur Saat Ukur</th>
+                                <th class="pb-3 px-2">Berat (kg)</th>
+                                <th class="pb-3 px-2">Tinggi (cm)</th>
+                                <th class="pb-3 px-2">IMT</th>
+                                <th class="pb-3 px-2">Lingkar Kepala</th>
+                                <th class="pb-3 px-2">LiLA</th>
+                                <th class="pb-3 px-2">Status Gizi (IMT/U)</th>
+                                <th class="pb-3 px-2 text-right">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="measureHistoryTableBody" class="divide-y divide-slate-100 dark:divide-slate-700 text-sm">
+                            <!-- Diisi dinamis -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. ANALISIS & GRAFIK WHO TAB -->
+        <div id="view-analisis" class="hidden space-y-6">
+            <!-- TARGET PERTUMBUHAN & POTENSI GENETIK -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Potensi Tinggi Genetik -->
+                <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-100 dark:border-slate-700 shadow-sm relative overflow-hidden">
+                    <div class="absolute -right-10 -bottom-10 text-9xl text-slate-100 dark:text-slate-700/30 font-extrabold select-none pointer-events-none">
+                        DNA
+                    </div>
+                    <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-dna text-violet-500"></i>
+                        <span>Potensi Tinggi Genetik (Adult Height)</span>
+                    </h3>
+                    <p class="text-xs text-slate-400 dark:text-slate-500 mb-4 font-medium uppercase tracking-wider">Berdasarkan rumus Tinggi Orang Tua</p>
+                    <div class="space-y-3 relative z-10">
+                        <div class="flex justify-between items-center bg-slate-50 dark:bg-slate-700/50 p-3 rounded-xl">
+                            <span class="text-sm font-semibold">Tinggi Ibu / Ayah</span>
+                            <span id="genParentHeights" class="text-sm font-extrabold">-</span>
+                        </div>
+                        <div class="flex justify-between items-center bg-violet-50 dark:bg-violet-900/20 p-3 rounded-xl border border-violet-100 dark:border-violet-800">
+                            <span class="text-sm font-bold text-violet-700 dark:text-violet-400">Target Tinggi Dewasa</span>
+                            <span id="genTargetHeight" class="text-base font-extrabold text-violet-700 dark:text-violet-400">-</span>
+                        </div>
+                        <div class="flex justify-between items-center bg-slate-50 dark:bg-slate-700/50 p-3 rounded-xl">
+                            <span class="text-sm font-semibold">Rentang Normal (±8.5 cm)</span>
+                            <span id="genNormalRange" class="text-sm font-extrabold">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Target WHO Sesuai Umur Saat Ini -->
+                <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-100 dark:border-slate-700 shadow-sm">
+                    <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-bullseye text-brand-500"></i>
+                        <span>Target Pertumbuhan Saat Ini (Standard WHO)</span>
+                    </h3>
+                    <p class="text-xs text-slate-400 dark:text-slate-500 mb-4 font-medium uppercase tracking-wider">Dihitung otomatis berdasar umur & jenis kelamin</p>
+                    <div class="grid grid-cols-3 gap-2">
+                        <div class="bg-slate-50 dark:bg-slate-700/50 p-3 rounded-xl text-center">
+                            <p class="text-[10px] font-bold text-slate-400 uppercase">Berat (kg)</p>
+                            <p class="text-sm font-extrabold mt-1 text-slate-800 dark:text-white" id="targetWeight">-</p>
+                            <span class="text-[10px] text-slate-400 block mt-1">(Min - Med - Max)</span>
+                        </div>
+                        <div class="bg-slate-50 dark:bg-slate-700/50 p-3 rounded-xl text-center">
+                            <p class="text-[10px] font-bold text-slate-400 uppercase">Tinggi (cm)</p>
+                            <p class="text-sm font-extrabold mt-1 text-slate-800 dark:text-white" id="targetHeightCurrent">-</p>
+                            <span class="text-[10px] text-slate-400 block mt-1">(Min - Med - Max)</span>
+                        </div>
+                        <div class="bg-slate-50 dark:bg-slate-700/50 p-3 rounded-xl text-center">
+                            <p class="text-[10px] font-bold text-slate-400 uppercase">IMT Target</p>
+                            <p class="text-sm font-extrabold mt-1 text-slate-800 dark:text-white" id="targetBmi">-</p>
+                            <span class="text-[10px] text-slate-400 block mt-1">(Median Ideal)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- INTERACTIVE CHARTS FROM WHO STANDARDS -->
+            <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-100 dark:border-slate-700 shadow-sm space-y-8">
+                <div>
+                    <h3 class="text-xl font-extrabold text-slate-900 dark:text-white">Kurva Grafik Pertumbuhan WHO</h3>
+                    <p class="text-sm text-slate-500 dark:text-slate-400">Garis biru menunjukkan perkembangan anak Anda, berbanding garis target ideal WHO (median dan batas standard deviasi +/- 2SD).</p>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <!-- Chart 1: Berat Badan menurut Umur -->
+                    <div class="space-y-2 border border-slate-100 dark:border-slate-700 p-4 rounded-xl">
+                        <h4 class="font-bold text-slate-700 dark:text-slate-300 text-sm text-center">Grafik Berat Badan menurut Umur (BB/U)</h4>
+                        <div class="h-64 relative">
+                            <canvas id="chartWFA"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Chart 2: Tinggi Badan menurut Umur -->
+                    <div class="space-y-2 border border-slate-100 dark:border-slate-700 p-4 rounded-xl">
+                        <h4 class="font-bold text-slate-700 dark:text-slate-300 text-sm text-center">Grafik Tinggi Badan menurut Umur (TB/U)</h4>
+                        <div class="h-64 relative">
+                            <canvas id="chartHFA"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Chart 3: IMT menurut Umur -->
+                    <div class="space-y-2 border border-slate-100 dark:border-slate-700 p-4 rounded-xl">
+                        <h4 class="font-bold text-slate-700 dark:text-slate-300 text-sm text-center">Grafik Indeks Massa Tubuh menurut Umur (IMT/U)</h4>
+                        <div class="h-64 relative">
+                            <canvas id="chartBFA"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Chart 4: Grafik Pertumbuhan Individual (Tren Realisasi) -->
+                    <div class="space-y-2 border border-slate-100 dark:border-slate-700 p-4 rounded-xl">
+                        <h4 class="font-bold text-slate-700 dark:text-slate-300 text-sm text-center">Garis Tren Pertumbuhan Terkini</h4>
+                        <div class="h-64 relative">
+                            <canvas id="chartIndividual"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. REKOMENDASI GIZI & TIDUR TAB -->
+        <div id="view-nutrisi" class="hidden space-y-6">
+            <!-- NUTRIENT CARD -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Kalori & Makronutrien -->
+                <div class="lg:col-span-2 bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-100 dark:border-slate-700 shadow-sm">
+                    <h3 class="text-xl font-extrabold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-calculator text-brand-500"></i>
+                        <span>Estimasi Kebutuhan Makronutrisi Harian</span>
+                    </h3>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+                        <div class="bg-sky-50 dark:bg-sky-950/20 p-4 rounded-xl border border-sky-100 dark:border-sky-800 text-center">
+                            <p class="text-xs font-bold text-sky-600 dark:text-sky-400 uppercase">Energi</p>
+                            <p class="text-xl font-extrabold text-sky-700 dark:text-sky-300 mt-1" id="nut_energy">-</p>
+                            <span class="text-[10px] text-sky-500 font-semibold">kkal/hari</span>
+                        </div>
+                        <div class="bg-emerald-50 dark:bg-emerald-950/20 p-4 rounded-xl border border-emerald-100 dark:border-emerald-800 text-center">
+                            <p class="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase">Protein</p>
+                            <p class="text-xl font-extrabold text-emerald-700 dark:text-emerald-300 mt-1" id="nut_protein">-</p>
+                            <span class="text-[10px] text-emerald-500 font-semibold">gram/hari</span>
+                        </div>
+                        <div class="bg-amber-50 dark:bg-amber-950/20 p-4 rounded-xl border border-amber-100 dark:border-amber-800 text-center">
+                            <p class="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase">Lemak</p>
+                            <p class="text-xl font-extrabold text-amber-700 dark:text-amber-300 mt-1" id="nut_fat">-</p>
+                            <span class="text-[10px] text-amber-500 font-semibold">gram/hari</span>
+                        </div>
+                        <div class="bg-purple-50 dark:bg-purple-950/20 p-4 rounded-xl border border-purple-100 dark:border-purple-800 text-center">
+                            <p class="text-xs font-bold text-purple-600 dark:text-purple-400 uppercase">Karbohidrat</p>
+                            <p class="text-xl font-extrabold text-purple-700 dark:text-purple-300 mt-1" id="nut_carb">-</p>
+                            <span class="text-[10px] text-purple-500 font-semibold">gram/hari</span>
+                        </div>
+                    </div>
+
+                    <h4 class="font-bold text-slate-900 dark:text-white mb-3">Zat Gizi Mikro & Hidrasi</h4>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                        <div class="bg-slate-50 dark:bg-slate-700/50 p-3 rounded-xl flex justify-between items-center">
+                            <span class="text-slate-500">Serat:</span>
+                            <span class="font-bold" id="nut_fiber">-</span>
+                        </div>
+                        <div class="bg-slate-50 dark:bg-slate-700/50 p-3 rounded-xl flex justify-between items-center">
+                            <span class="text-slate-500">Kebutuhan Air:</span>
+                            <span class="font-bold" id="nut_water">-</span>
+                        </div>
+                        <div class="bg-slate-50 dark:bg-slate-700/50 p-3 rounded-xl flex justify-between items-center">
+                            <span class="text-slate-500">Kalsium:</span>
+                            <span class="font-bold" id="nut_calcium">-</span>
+                        </div>
+                        <div class="bg-slate-50 dark:bg-slate-700/50 p-3 rounded-xl flex justify-between items-center">
+                            <span class="text-slate-500">Zat Besi:</span>
+                            <span class="font-bold" id="nut_iron">-</span>
+                        </div>
+                        <div class="bg-slate-50 dark:bg-slate-700/50 p-3 rounded-xl flex justify-between items-center">
+                            <span class="text-slate-500">Zinc:</span>
+                            <span class="font-bold" id="nut_zinc">-</span>
+                        </div>
+                        <div class="bg-slate-50 dark:bg-slate-700/50 p-3 rounded-xl flex justify-between items-center">
+                            <span class="text-slate-500">Vitamin A:</span>
+                            <span class="font-bold" id="nut_vita">-</span>
+                        </div>
+                        <div class="bg-slate-50 dark:bg-slate-700/50 p-3 rounded-xl flex justify-between items-center">
+                            <span class="text-slate-500">Vitamin D:</span>
+                            <span class="font-bold" id="nut_vitd">-</span>
+                        </div>
+                        <div class="bg-slate-50 dark:bg-slate-700/50 p-3 rounded-xl flex justify-between items-center">
+                            <span class="text-slate-500">Vitamin C:</span>
+                            <span class="font-bold" id="nut_vitc">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pemantauan Tidur & Aktivitas -->
+                <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-100 dark:border-slate-700 shadow-sm flex flex-col justify-between">
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-3">Tidur & Aktivitas</h3>
+                        <p class="text-xs text-slate-400 dark:text-slate-500 mb-4">Menganalisis kecukupan istirahat harian anak Anda.</p>
+                        
+                        <div class="space-y-4">
+                            <!-- Sleep Status -->
+                            <div class="bg-slate-50 dark:bg-slate-700/50 p-3 rounded-xl">
+                                <div class="flex justify-between items-center mb-1">
+                                    <span class="text-xs font-bold text-slate-500">Durasi Tidur Aktual</span>
+                                    <span class="text-xs font-bold text-slate-500">Target Usia</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="font-extrabold text-slate-800 dark:text-white" id="sleep_actual_val">0 Jam</span>
+                                    <span class="font-extrabold text-brand-500" id="sleep_target_val">10-13 Jam</span>
+                                </div>
+                                <div class="mt-2 flex items-center justify-between">
+                                    <span class="text-[10px] text-slate-400">Defisit Tidur: <strong id="sleep_deficit_val">0 Jam</strong></span>
+                                    <span id="sleep_status_badge" class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">Normal</span>
+                                </div>
+                            </div>
+
+                            <!-- Physical Activity Status -->
+                            <div class="bg-slate-50 dark:bg-slate-700/50 p-3 rounded-xl">
+                                <div class="flex justify-between items-center mb-1">
+                                    <span class="text-xs font-bold text-slate-500">Menit Aktif Harian</span>
+                                    <span class="text-xs font-bold text-slate-500">Target</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="font-extrabold text-slate-800 dark:text-white" id="activity_actual_val">0 Menit</span>
+                                    <span class="font-extrabold text-brand-500">60+ Menit</span>
+                                </div>
+                                <div class="mt-2 flex items-center justify-between">
+                                    <span class="text-[10px] text-slate-400">Realisasi Target Harian</span>
+                                    <span id="activity_status_badge" class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">Cukup</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MENU REKOMENDASI HARIAN OTOMATIS -->
+            <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-100 dark:border-slate-700 shadow-sm">
+                <h3 class="text-xl font-extrabold text-slate-900 dark:text-white mb-2">Panduan Jadwal Menu Makan Sehat</h3>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">Contoh pembagian porsi makan sehat anak dalam satu hari yang disesuaikan untuk asupan seimbang.</p>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="menuMakanContainer">
+                    <!-- Dinonaktifkan sementara dan diisi dynamic oleh Javascript -->
+                </div>
+            </div>
+
+            <!-- JADWAL PENGINGAT / REMINDER -->
+            <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-100 dark:border-slate-700 shadow-sm">
+                <h3 class="text-xl font-extrabold text-slate-900 dark:text-white mb-2">Jadwal Pengingat & Agenda Imunisasi</h3>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">Agenda wajib pemantauan kesehatan berkala, pemberian vitamin, dan imunisasi penting.</p>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="bg-sky-50/50 dark:bg-slate-700/30 p-4 rounded-xl border border-sky-100 dark:border-slate-700 flex items-start space-x-3">
+                        <div class="text-2xl text-sky-500 mt-1"><i class="fa-solid fa-weight-scale"></i></div>
+                        <div>
+                            <h4 class="font-bold text-sm text-slate-800 dark:text-white">Ukur Bulanan</h4>
+                            <p class="text-xs text-slate-500 mt-1">Lakukan pengukuran berat badan, tinggi badan, dan lingkar kepala setiap tanggal lahir anak.</p>
+                        </div>
+                    </div>
+                    <div class="bg-emerald-50/50 dark:bg-slate-700/30 p-4 rounded-xl border border-emerald-100 dark:border-slate-700 flex items-start space-x-3">
+                        <div class="text-2xl text-emerald-500 mt-1"><i class="fa-solid fa-syringe"></i></div>
+                        <div>
+                            <h4 class="font-bold text-sm text-slate-800 dark:text-white">Imunisasi Lanjutan</h4>
+                            <p class="text-xs text-slate-500 mt-1">Pastikan vaksin BCG, Polio, DPT, Campak/MR lengkap sebelum umur 2 tahun.</p>
+                        </div>
+                    </div>
+                    <div class="bg-rose-50/50 dark:bg-slate-700/30 p-4 rounded-xl border border-rose-100 dark:border-slate-700 flex items-start space-x-3">
+                        <div class="text-2xl text-rose-500 mt-1"><i class="fa-solid fa-capsules"></i></div>
+                        <div>
+                            <h4 class="font-bold text-sm text-slate-800 dark:text-white">Kapsul Vitamin A</h4>
+                            <p class="text-xs text-slate-500 mt-1">Kapsul Biru (bayi 6-11 bulan) & Kapsul Merah (anak 12-59 bulan) gratis setiap Februari & Agustus di Posyandu.</p>
+                        </div>
+                    </div>
+                    <div class="bg-amber-50/50 dark:bg-slate-700/30 p-4 rounded-xl border border-amber-100 dark:border-slate-700 flex items-start space-x-3">
+                        <div class="text-2xl text-amber-500 mt-1"><i class="fa-solid fa-stethoscope"></i></div>
+                        <div>
+                            <h4 class="font-bold text-sm text-slate-800 dark:text-white">Kontrol Rutin</h4>
+                            <p class="text-xs text-slate-500 mt-1">Konsultasikan ke dokter spesialis anak atau bidan jika perkembangan motorik tertinggal dibanding anak seusianya.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="bg-white dark:bg-slate-800 border-t border-slate-100 dark:border-slate-700 py-6 mt-12 transition-colors">
+        <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-400 dark:text-slate-500 space-y-2">
+            <p class="font-bold">Growth Tracker Anak &copy; 2026</p>
+            <p>Data dianalisis merujuk pada standar resmi <strong>WHO Child Growth Standards</strong> untuk optimalisasi tumbuh kembang emas balita Indonesia.</p>
+        </div>
+    </footer>
+
+    <!-- ADD CHILD MODAL -->
+    <div id="addChildModal" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+        <div class="bg-white dark:bg-slate-800 w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+            <!-- Header Modal -->
+            <div class="bg-gradient-to-r from-brand-500 to-sky-400 text-white p-5 flex justify-between items-center">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-child-reaching text-xl"></i>
+                    <h3 class="text-lg font-extrabold" id="modalTitle">Tambah Profil Anak</h3>
+                </div>
+                <button onclick="closeAddChildModal()" class="text-white hover:text-slate-200 text-xl"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <!-- Body Modal -->
+            <div class="p-6 overflow-y-auto space-y-6">
+                <form id="childForm" onsubmit="saveChildProfile(event)" class="space-y-6">
+                    <input type="hidden" id="edit_child_id">
+                    
+                    <!-- DATA DASAR -->
+                    <div>
+                        <h4 class="font-bold text-brand-500 text-sm uppercase tracking-wider mb-3 pb-1 border-b border-slate-100 dark:border-slate-700">1. Data Dasar Anak</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-2">Nama Lengkap</label>
+                                <input type="text" id="c_fullname" required class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-2">Nama Panggilan</label>
+                                <input type="text" id="c_nickname" required class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-2">Jenis Kelamin</label>
+                                <select id="c_gender" class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-brand-500">
+                                    <option value="Laki-laki">Laki-laki</option>
+                                    <option value="Perempuan">Perempuan</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-2">Tanggal Lahir</label>
+                                <input type="date" id="c_dob" required class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-brand-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-2">Tempat Lahir</label>
+                                <input type="text" id="c_pob" placeholder="Contoh: Jakarta" class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-brand-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-2">Foto Profil (URL Gambar)</label>
+                                <input type="text" id="c_photo" placeholder="Atau biarkan kosong untuk avatar default" class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-brand-500">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- DATA KELAHIRAN -->
+                    <div>
+                        <h4 class="font-bold text-brand-500 text-sm uppercase tracking-wider mb-3 pb-1 border-b border-slate-100 dark:border-slate-700">2. Data Kelahiran</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-2">Berat Lahir (kg)</label>
+                                <input type="number" id="c_birth_weight" step="0.01" required placeholder="Misal: 3.2" class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-brand-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-2">Panjang Lahir (cm)</label>
+                                <input type="number" id="c_birth_length" step="0.1" required placeholder="Misal: 50" class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-brand-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-2">Usia Kehamilan (Minggu)</label>
+                                <input type="number" id="c_gestational_age" placeholder="Misal: 38" class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-brand-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-2">Prematur?</label>
+                                <select id="c_premature" class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-brand-500">
+                                    <option value="Tidak">Tidak</option>
+                                    <option value="Ya">Ya</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- DATA ORANG TUA -->
+                    <div>
+                        <h4 class="font-bold text-brand-500 text-sm uppercase tracking-wider mb-3 pb-1 border-b border-slate-100 dark:border-slate-700">3. Data Orang Tua</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Ayah -->
+                            <div class="space-y-3 p-3 bg-slate-50 dark:bg-slate-700/50 rounded-2xl">
+                                <span class="font-bold text-xs text-slate-600 dark:text-slate-300 flex items-center gap-1"><i class="fa-solid fa-user-tie"></i> Data Ayah</span>
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-400 mb-1">Nama Ayah</label>
+                                    <input type="text" id="c_father_name" required class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-1.5 text-xs">
+                                </div>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label class="block text-[11px] font-bold text-slate-400 mb-1">TB Ayah (cm)</label>
+                                        <input type="number" id="c_father_height" required placeholder="Contoh: 172" class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-1.5 text-xs">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[11px] font-bold text-slate-400 mb-1">BB Ayah (kg)</label>
+                                        <input type="number" id="c_father_weight" placeholder="Contoh: 70" class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-1.5 text-xs">
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Ibu -->
+                            <div class="space-y-3 p-3 bg-slate-50 dark:bg-slate-700/50 rounded-2xl">
+                                <span class="font-bold text-xs text-slate-600 dark:text-slate-300 flex items-center gap-1"><i class="fa-solid fa-user-nurse"></i> Data Ibu</span>
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-400 mb-1">Nama Ibu</label>
+                                    <input type="text" id="c_mother_name" required class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-1.5 text-xs">
+                                </div>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label class="block text-[11px] font-bold text-slate-400 mb-1">TB Ibu (cm)</label>
+                                        <input type="number" id="c_mother_height" required placeholder="Contoh: 158" class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-1.5 text-xs">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[11px] font-bold text-slate-400 mb-1">BB Ibu (kg)</label>
+                                        <input type="number" id="c_mother_weight" placeholder="Contoh: 55" class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-1.5 text-xs">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- RIWAYAT MEDIS -->
+                    <div>
+                        <h4 class="font-bold text-brand-500 text-sm uppercase tracking-wider mb-3 pb-1 border-b border-slate-100 dark:border-slate-700">4. Riwayat Kesehatan & Keluarga</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-2">Mendapat ASI Eksklusif (6 Bulan Pertama)?</label>
+                                <select id="c_asi" class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-brand-500">
+                                    <option value="Ya">Ya</option>
+                                    <option value="Tidak">Tidak</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-2">Riwayat Stunting Keluarga?</label>
+                                <select id="c_stunting_fam" class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-brand-500">
+                                    <option value="Tidak">Tidak Ada</option>
+                                    <option value="Ya">Ya, Ada Riwayat</option>
+                                </select>
+                            </div>
+                            <div class="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-500 mb-2">Riwayat Alergi</label>
+                                    <input type="text" id="c_allergy" placeholder="Misal: Susu sapi, Telur, atau tidak ada" class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-brand-500">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-500 mb-2">Riwayat Penyakit Penyerta</label>
+                                    <input type="text" id="c_disease" placeholder="Misal: Asma, TBC Paru, atau tidak ada" class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-brand-500">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-500 mb-2">Riwayat Rawat Inap Rumah Sakit</label>
+                                    <input type="text" id="c_hospital" placeholder="Tuliskan jika pernah dirawat di RS" class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-brand-500">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Footer Form -->
+                    <div class="flex justify-end space-x-2 pt-4 border-t border-slate-100 dark:border-slate-700">
+                        <button type="button" onclick="closeAddChildModal()" class="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 text-slate-500 text-sm font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-all">Batal</button>
+                        <button type="submit" class="bg-brand-500 hover:bg-brand-600 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-all shadow-md">Simpan Profil</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- CORE JAVASCRIPT & DATABASE SYSTEM -->
+    <script>
+        // --- DATA STORE SYSTEM ---
+        let childrenData = JSON.parse(localStorage.getItem('gt_children')) || [];
+        let activeChildId = localStorage.getItem('gt_active_child_id') || "";
+
+        // ============================================================
+// PATCH: Tambahkan kode ini ke dalam blok <script> di HTML
+// Letakkan SETELAH baris:  let activeChildId = ...
+// ============================================================
+ 
+// --- KONFIGURASI GAS ---
+// Ganti dengan URL deployment GAS Anda setelah deploy
+const GAS_URL = 'BUAT_WEB_APP';
+// Contoh: 'https://script.google.com/macros/s/AKfycb.../exec'
+
+async function initCloudSync() {
+  if (!GAS_URL || GAS_URL.includes('GANTI_DENGAN')) return;
+ 
+  const localEmpty = childrenData.length === 0;
+ 
+  if (localEmpty) {
+    // Device baru / localStorage bersih → wajib load dari cloud
+    showCloudLoadingOverlay(true);
+    await loadFromGAS();
+    showCloudLoadingOverlay(false);
+  } else {
+    // Ada data lokal → tetap sync diam-diam di background
+    // untuk memastikan data terbaru dari device lain ikut masuk
+    syncFromGASBackground();
+  }
+}
+
+ 
+// ============================================================
+// LOAD DATA DARI GAS (blocking - ditunggu sampai selesai)
+// ============================================================
+async function loadFromGAS() {
+  updateSyncStatus('syncing');
+  try {
+    const url      = GAS_URL + '?action=load_all&t=' + Date.now();
+    const response = await fetch(url);
+    const result   = await response.json();
+ 
+    if (result.status === 'ok' && Array.isArray(result.data) && result.data.length > 0) {
+      childrenData = result.data;
+      activeChildId = childrenData[0].id;
+ 
+      // Simpan ke localStorage agar device ini punya cache lokal
+      localStorage.setItem('gt_children', JSON.stringify(childrenData));
+      localStorage.setItem('gt_active_child_id', activeChildId);
+ 
+      // Re-render semua UI
+      renderDashboard();
+      updateActiveChildBanner();
+      loadActiveChildData();
+ 
+      updateSyncStatus('success');
+      alertToast('Data berhasil dimuat dari Spreadsheet cloud ☁️');
+    } else if (result.data && result.data.length === 0) {
+      updateSyncStatus('idle');
+      alertToast('Spreadsheet masih kosong, mulai tambah profil anak.', 'warning');
+    } else {
+      throw new Error(result.message || 'Respons tidak valid');
+    }
+  } catch (err) {
+    console.error('loadFromGAS error:', err);
+    updateSyncStatus('error');
+    alertToast('Gagal memuat dari cloud: ' + err.message, 'error');
+  }
+}
+ 
+// ============================================================
+// SYNC BACKGROUND: Jalankan di belakang tanpa blokir UI
+// Merge data cloud ke lokal jika ada data baru dari device lain
+// ============================================================
+async function syncFromGASBackground() {
+  if (!GAS_URL || GAS_URL.includes('GANTI_DENGAN')) return;
+  try {
+    const url    = GAS_URL + '?action=load_all&t=' + Date.now();
+    const res    = await fetch(url);
+    const result = await res.json();
+ 
+    if (result.status !== 'ok' || !Array.isArray(result.data)) return;
+ 
+    let changed = false;
+ 
+    result.data.forEach(cloudChild => {
+      const localChild = childrenData.find(c => c.id === cloudChild.id);
+ 
+      if (!localChild) {
+        // Anak baru dari device lain, tambahkan
+        childrenData.push(cloudChild);
+        changed = true;
+        return;
+      }
+ 
+      // Merge pengukuran: tambah yang belum ada di lokal
+      cloudChild.measurements.forEach(cm => {
+        const exists = localChild.measurements.find(lm => lm.id === cm.id);
+        if (!exists) {
+          localChild.measurements.push(cm);
+          localChild.measurements.sort((a, b) => new Date(a.date) - new Date(b.date));
+          changed = true;
+        }
+      });
+ 
+      // Merge catatan harian: tambah yang belum ada di lokal
+      cloudChild.dailyNotes.forEach(cn => {
+        const exists = (localChild.dailyNotes || []).find(ln => ln.id === cn.id);
+        if (!exists) {
+          if (!localChild.dailyNotes) localChild.dailyNotes = [];
+          localChild.dailyNotes.push(cn);
+          localChild.dailyNotes.sort((a, b) => new Date(b.date) - new Date(a.date));
+          changed = true;
+        }
+      });
+    });
+ 
+    if (changed) {
+      localStorage.setItem('gt_children', JSON.stringify(childrenData));
+      renderDashboard();
+      updateActiveChildBanner();
+      loadActiveChildData();
+      alertToast('Data terbaru dari cloud berhasil digabungkan ☁️');
+    }
+ 
+  } catch (err) {
+    // Background sync gagal = tidak perlu notifikasi user
+    console.warn('Background sync gagal:', err);
+  }
+}
+ 
+// ============================================================
+// OVERLAY LOADING saat pertama kali load dari cloud
+// Mencegah user melihat halaman kosong sementara data ditarik
+// ============================================================
+function showCloudLoadingOverlay(show) {
+  let overlay = document.getElementById('cloud-loading-overlay');
+ 
+  if (show) {
+    if (overlay) return;
+    overlay = document.createElement('div');
+    overlay.id = 'cloud-loading-overlay';
+    overlay.style.cssText = `
+      position: fixed; inset: 0; z-index: 9999;
+      background: rgba(248,250,252,0.96);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 16px;
+    `;
+    overlay.innerHTML = `
+      <div style="
+        width: 64px; height: 64px; border-radius: 20px;
+        background: #0ea5e9; display: flex; align-items: center;
+        justify-content: center; box-shadow: 0 8px 24px rgba(14,165,233,0.3);
+      ">
+        <i class="fa-solid fa-cloud-arrow-down text-white text-2xl"></i>
+      </div>
+      <div style="text-align: center;">
+        <p style="font-weight: 800; font-size: 16px; color: #0f172a; margin: 0 0 4px;">
+          Memuat Data dari Cloud...
+        </p>
+        <p style="font-size: 13px; color: #64748b; margin: 0;">
+          Mohon tunggu, sedang mengambil data dari Spreadsheet
+        </p>
+      </div>
+      <div style="
+        width: 200px; height: 4px; background: #e2e8f0;
+        border-radius: 99px; overflow: hidden;
+      ">
+        <div style="
+          height: 100%; width: 40%; background: #0ea5e9;
+          border-radius: 99px;
+          animation: loadbar 1.2s ease-in-out infinite alternate;
+        "></div>
+      </div>
+      <style>
+        @keyframes loadbar {
+          from { transform: translateX(-60%); }
+          to   { transform: translateX(260%); }
+        }
+      </style>
+    `;
+    document.body.appendChild(overlay);
+  } else {
+    if (overlay) {
+      overlay.style.opacity = '0';
+      overlay.style.transition = 'opacity 0.3s';
+      setTimeout(() => overlay.remove(), 300);
+    }
+  }
+}
+
+ 
+// ============================================================
+// TOMBOL MANUAL: "Muat dari Cloud"
+// Inject tombol ini ke navbar (dipanggil di window.onload)
+// ============================================================
+function initCloudLoadButton() {
+  const restoreInput = document.getElementById('restoreFile');
+  if (!restoreInput) return;
+ 
+  const btn = document.createElement('button');
+  btn.id        = 'btn-load-cloud';
+  btn.title     = 'Muat ulang data dari Spreadsheet';
+  btn.className = 'p-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-slate-600 dark:text-slate-300';
+  btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-down text-lg"></i>';
+  btn.onclick   = async () => {
+    if (confirm('Muat ulang semua data dari Google Spreadsheet?\n\nData lokal akan digabung dengan data cloud.')) {
+      await loadFromGAS();
+    }
+  };
+ 
+  // Sisipkan setelah tombol restore file
+  restoreInput.insertAdjacentElement('afterend', btn);
+}
+        
+// Flag: apakah sedang dalam proses sync (cegah double-sync)
+let isSyncing = false;
+ 
+// ============================================================
+// FUNGSI UTAMA: Kirim data ke GAS Spreadsheet
+// Dipanggil setiap kali saveData() dieksekusi
+// ============================================================
+async function syncToGAS(action = 'sync_all', specificData = null) {
+  // Jangan sync jika URL belum diset
+  if (!GAS_URL || GAS_URL.includes('GANTI_DENGAN')) return;
+  if (isSyncing) return;
+ 
+  isSyncing = true;
+  updateSyncStatus('syncing');
+ 
+  try {
+    let payload;
+ 
+    if (action === 'sync_all') {
+      payload = { action: 'sync_all', data: childrenData };
+    } else {
+      payload = { action, data: specificData };
+    }
+ 
+    const response = await fetch(GAS_URL, {
+      method: 'POST',
+      // GAS tidak support preflight CORS, gunakan no-cors
+      // Data tetap terkirim, tapi response tidak bisa dibaca (opaque)
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+ 
+    // Karena mode: no-cors, kita tidak bisa baca response body
+    // Tapi jika tidak ada network error, berarti request terkirim
+    updateSyncStatus('success');
+    
+  } catch (err) {
+    console.error('GAS Sync gagal:', err);
+    updateSyncStatus('error');
+  } finally {
+    isSyncing = false;
+  }
+}
+ 
+// ============================================================
+// Indikator status sync di navbar
+// ============================================================
+function updateSyncStatus(status) {
+  // Cari elemen indikator (kita akan inject ke navbar)
+  let indicator = document.getElementById('gas-sync-indicator');
+  if (!indicator) return;
+ 
+  const states = {
+    idle:    { icon: 'fa-cloud',            color: 'text-slate-400',  title: 'Terhubung ke Spreadsheet' },
+    syncing: { icon: 'fa-arrows-rotate fa-spin', color: 'text-sky-500', title: 'Menyinkronkan data...' },
+    success: { icon: 'fa-cloud-check',       color: 'text-emerald-500', title: 'Data tersimpan di Spreadsheet' },
+    error:   { icon: 'fa-cloud-exclamation', color: 'text-rose-500',   title: 'Gagal sync ke Spreadsheet' }
+  };
+ 
+  const s = states[status] || states.idle;
+  indicator.className = `p-2.5 rounded-xl transition-colors ${s.color}`;
+  indicator.querySelector('i').className = `fa-solid ${s.icon} text-lg`;
+  indicator.title = s.title;
+ 
+  // Reset ke idle setelah 4 detik jika success
+  if (status === 'success') {
+    setTimeout(() => updateSyncStatus('idle'), 4000);
+  }
+}
+
+        // Instansiasi Chart Global
+        let chartWFAInstance = null;
+        let chartHFAInstance = null;
+        let chartBFAInstance = null;
+        let chartIndInstance = null;
+
+        // Inisialisasi on Window Load
+        window.onload = function() {
+            // Apply Dark Mode Preferensi awal
+            if (localStorage.getItem('darkMode') === 'true') {
+                document.documentElement.classList.add('dark');
+                document.getElementById('themeIcon').className = 'fa-solid fa-sun text-lg';
+            }
+            
+            // Set Tanggal Hari Ini ke Input default
+            const todayStr = new Date().toISOString().split('T')[0];
+            if (document.getElementById('measure_date')) document.getElementById('measure_date').value = todayStr;
+            if (document.getElementById('daily_date')) document.getElementById('daily_date').value = todayStr;
+
+            renderDashboard();
+            updateActiveChildBanner();
+            loadActiveChildData();
+            initCloudLoadButton();
+            initCloudSync();
+            
+        }
+
+        // --- THEME & UTILITIES ---
+        function toggleDarkMode() {
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.setItem('darkMode', isDark);
+            document.getElementById('themeIcon').className = isDark ? 'fa-solid fa-sun text-lg' : 'fa-solid fa-moon text-lg';
+            // Render ulang grafik karena pengaruh tema grid lines
+            if (activeChildId) renderAllCharts();
+        }
+
+        function triggerRestoreInput() {
+            document.getElementById('restoreFile').click();
+        }
+
+        // Simpan Cadangan ke JSON File (Backup)
+        function backupData() {
+            const blob = new Blob([JSON.stringify(childrenData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `GrowthTracker_Backup_${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Memulihkan data dari file JSON cadangan
+        function restoreData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const parsed = JSON.parse(e.target.result);
+                    if (Array.isArray(parsed)) {
+                        childrenData = parsed;
+                        saveData();
+                        if (childrenData.length > 0) activeChildId = childrenData[0].id;
+                        renderDashboard();
+                        updateActiveChildBanner();
+                        loadActiveChildData();
+                        alertToast("Data berhasil dipulihkan dari cadangan!");
+                    } else {
+                        alertToast("Format data cadangan tidak cocok.", "error");
+                    }
+                } catch (err) {
+                    alertToast("Gagal membaca file cadangan.", "error");
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function alertToast(message, type = "success") {
+            const alertArea = document.getElementById('systemAlerts');
+            alertArea.classList.remove('hidden');
+            const alertId = 'alert_' + Date.now();
+            
+            let bgClass = "bg-emerald-500 text-white shadow-emerald-500/20";
+            let icon = '<i class="fa-solid fa-circle-check"></i>';
+            if (type === "error") {
+                bgClass = "bg-rose-500 text-white shadow-rose-500/20";
+                icon = '<i class="fa-solid fa-triangle-exclamation"></i>';
+            } else if (type === "warning") {
+                bgClass = "bg-amber-500 text-white shadow-amber-500/20";
+                icon = '<i class="fa-solid fa-bell"></i>';
+            }
+
+            const alertHtml = `
+                <div id="${alertId}" class="flex items-center justify-between p-4 rounded-xl ${bgClass} shadow-md transition-all duration-300 transform translate-y-2">
+                    <div class="flex items-center space-x-3 text-sm font-bold">
+                        ${icon}
+                        <span>${message}</span>
+                    </div>
+                    <button onclick="document.getElementById('${alertId}').remove()" class="text-white/80 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+            `;
+            alertArea.insertAdjacentHTML('beforeend', alertHtml);
+
+            setTimeout(() => {
+                const el = document.getElementById(alertId);
+                if (el) el.remove();
+                if (alertArea.children.length === 0) alertArea.classList.add('hidden');
+            }, 6000);
+        }
+
+        // --- NAVIGATION SYSTEM ---
+        function switchTab(tabName) {
+            // Sembunyikan semua section
+            document.getElementById('view-dashboard').classList.add('hidden');
+            document.getElementById('view-input-harian').classList.add('hidden');
+            document.getElementById('view-input-fisik').classList.add('hidden');
+            document.getElementById('view-analisis').classList.add('hidden');
+            document.getElementById('view-nutrisi').classList.add('hidden');
+
+            // Deaktifkan semua tombol tab
+            const tabs = ['dashboard', 'input-harian', 'input-fisik', 'analisis', 'nutrisi'];
+            tabs.forEach(t => {
+                const tabEl = document.getElementById(`tab-${t}`);
+                if (tabEl) {
+                    tabEl.className = "flex-1 py-3 px-4 rounded-xl text-sm font-bold transition-all duration-200 flex items-center justify-center space-x-2 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200";
+                }
+            });
+
+            // Aktifkan tab yang dipilih
+            document.getElementById(`view-${tabName}`).classList.remove('hidden');
+            const activeTab = document.getElementById(`tab-${tabName}`);
+            if (activeTab) {
+                activeTab.className = "flex-1 py-3 px-4 rounded-xl text-sm font-bold transition-all duration-200 flex items-center justify-center space-x-2 bg-white dark:bg-slate-700 text-brand-600 dark:text-white shadow-sm";
+            }
+
+            // Jika berganti ke analisis, butuh inisialisasi / redraw charts
+            if (tabName === 'analisis' || tabName === 'nutrisi') {
+                if (!activeChildId) {
+                    alertToast("Pilih atau buat profil anak terlebih dahulu!", "warning");
+                    switchTab('dashboard');
+                    return;
+                }
+                loadActiveChildData();
+            }
+        }
+
+        // --- DATABASE OPERATIONS ---
+        function saveData() {
+  // Simpan ke localStorage seperti biasa
+  localStorage.setItem('gt_children', JSON.stringify(childrenData));
+  localStorage.setItem('gt_active_child_id', activeChildId);
+  
+  // Tambahan: Sinkronkan ke GAS Spreadsheet secara async
+  // Tidak memblokir UI karena async
+  syncToGAS('sync_all');
+}
+ 
+
+        function openAddChildModal(id = null) {
+            document.getElementById('addChildModal').classList.remove('hidden');
+            document.getElementById('childForm').reset();
+            
+            if (id) {
+                document.getElementById('modalTitle').innerText = "Edit Profil Anak";
+                const child = childrenData.find(c => c.id === id);
+                if (child) {
+                    document.getElementById('edit_child_id').value = child.id;
+                    document.getElementById('c_fullname').value = child.fullname;
+                    document.getElementById('c_nickname').value = child.nickname;
+                    document.getElementById('c_gender').value = child.gender;
+                    document.getElementById('c_dob').value = child.dob;
+                    document.getElementById('c_pob').value = child.pob || "";
+                    document.getElementById('c_photo').value = child.photo || "";
+                    document.getElementById('c_birth_weight').value = child.birth_weight;
+                    document.getElementById('c_birth_length').value = child.birth_length;
+                    document.getElementById('c_gestational_age').value = child.gestational_age || "";
+                    document.getElementById('c_premature').value = child.premature || "Tidak";
+                    document.getElementById('c_father_name').value = child.father_name || "";
+                    document.getElementById('c_father_height').value = child.father_height || "";
+                    document.getElementById('c_father_weight').value = child.father_weight || "";
+                    document.getElementById('c_mother_name').value = child.mother_name || "";
+                    document.getElementById('c_mother_height').value = child.mother_height || "";
+                    document.getElementById('c_mother_weight').value = child.mother_weight || "";
+                    document.getElementById('c_asi').value = child.asi || "Ya";
+                    document.getElementById('c_stunting_fam').value = child.stunting_fam || "Tidak";
+                    document.getElementById('c_allergy').value = child.allergy || "";
+                    document.getElementById('c_disease').value = child.disease || "";
+                    document.getElementById('c_hospital').value = child.hospital || "";
+                }
+            } else {
+                document.getElementById('modalTitle').innerText = "Tambah Profil Anak";
+                document.getElementById('edit_child_id').value = "";
+            }
+        }
+
+        function closeAddChildModal() {
+            document.getElementById('addChildModal').classList.add('hidden');
+        }
+
+        function saveChildProfile(e) {
+            e.preventDefault();
+            const editId = document.getElementById('edit_child_id').value;
+            
+            const profile = {
+                id: editId || 'child_' + Date.now(),
+                fullname: document.getElementById('c_fullname').value,
+                nickname: document.getElementById('c_nickname').value,
+                gender: document.getElementById('c_gender').value,
+                dob: document.getElementById('c_dob').value,
+                pob: document.getElementById('c_pob').value,
+                photo: document.getElementById('c_photo').value,
+                birth_weight: parseFloat(document.getElementById('c_birth_weight').value),
+                birth_length: parseFloat(document.getElementById('c_birth_length').value),
+                gestational_age: parseInt(document.getElementById('c_gestational_age').value) || 40,
+                premature: document.getElementById('c_premature').value,
+                father_name: document.getElementById('c_father_name').value,
+                father_height: parseFloat(document.getElementById('c_father_height').value),
+                father_weight: parseFloat(document.getElementById('c_father_weight').value),
+                mother_name: document.getElementById('c_mother_name').value,
+                mother_height: parseFloat(document.getElementById('c_mother_height').value),
+                mother_weight: parseFloat(document.getElementById('c_mother_weight').value),
+                asi: document.getElementById('c_asi').value,
+                stunting_fam: document.getElementById('c_stunting_fam').value,
+                allergy: document.getElementById('c_allergy').value,
+                disease: document.getElementById('c_disease').value,
+                hospital: document.getElementById('c_hospital').value,
+                measurements: editId ? (childrenData.find(c => c.id === editId)?.measurements || []) : [],
+                dailyNotes: editId ? (childrenData.find(c => c.id === editId)?.dailyNotes || []) : []
+            };
+
+            // Tambahkan data awal lahir sebagai pengukuran fisik ke-0 jika belum ada pengukuran
+            if (profile.measurements.length === 0) {
+                profile.measurements.push({
+                    id: 'm_' + Date.now(),
+                    date: profile.dob,
+                    weight: profile.birth_weight,
+                    height: profile.birth_length,
+                    head: 34, // Perkiraan rata-rata lingkar kepala lahir
+                    muac: 11, // Perkiraan rata-rata LILA lahir
+                    photo: ""
+                });
+            }
+
+            if (editId) {
+                const idx = childrenData.findIndex(c => c.id === editId);
+                childrenData[idx] = profile;
+                alertToast("Profil anak berhasil diperbarui!");
+            } else {
+                childrenData.push(profile);
+                activeChildId = profile.id;
+                alertToast("Profil anak baru berhasil ditambahkan!");
+            }
+
+            saveData();
+            closeAddChildModal();
+            renderDashboard();
+            updateActiveChildBanner();
+            loadActiveChildData();
+        }
+
+        function deleteChildProfile(id, name) {
+            if (confirm(`Apakah Anda yakin ingin menghapus profil ${name}? Semua data harian dan riwayat pengukuran akan hilang permanen.`)) {
+                childrenData = childrenData.filter(c => c.id !== id);
+                if (activeChildId === id) {
+                    activeChildId = childrenData.length > 0 ? childrenData[0].id : "";
+                }
+                saveData();
+                renderDashboard();
+                updateActiveChildBanner();
+                loadActiveChildData();
+                alertToast("Profil anak telah terhapus.", "warning");
+            }
+        }
+
+        
+
+        // --- CALCULATIONS & STATS ---
+        function calculateAge(dob, targetDateStr = null) {
+            const birthDate = new Date(dob);
+            const today = targetDateStr ? new Date(targetDateStr) : new Date();
+            
+            let years = today.getFullYear() - birthDate.getFullYear();
+            let months = today.getMonth() - birthDate.getMonth();
+            let days = today.getDate() - birthDate.getDate();
+
+            if (days < 0) {
+                months -= 1;
+                const prevMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+                days += prevMonth.getDate();
+            }
+            if (months < 0) {
+                years -= 1;
+                months += 12;
+            }
+
+            return { years, months, days, totalMonths: (years * 12) + months };
+        }
+
+        function getAgeString(dob, targetDateStr = null) {
+            const age = calculateAge(dob, targetDateStr);
+            let s = [];
+            if (age.years > 0) s.push(`${age.years} Tahun`);
+            if (age.months > 0) s.push(`${age.months} Bulan`);
+            if (age.days > 0 || s.length === 0) s.push(`${age.days} Hari`);
+            return s.join(', ');
+        }
+
+        // Hitung Potensi Tinggi Dewasa (Target Genetik)
+        function calculateMPH(gender, fHeight, mHeight) {
+            if (!fHeight || !mHeight) return { target: 0, rangeMin: 0, rangeMax: 0 };
+            let target = 0;
+            if (gender === 'Laki-laki') {
+                target = (fHeight + mHeight + 13) / 2;
+            } else {
+                target = (fHeight + mHeight - 13) / 2;
+            }
+            return {
+                target: Math.round(target * 10) / 10,
+                rangeMin: Math.round((target - 8.5) * 10) / 10,
+                rangeMax: Math.round((target + 8.5) * 10) / 10
+            };
+        }
+
+        // --- DASHBOARD RENDERING ---
+        function renderDashboard() {
+            const grid = document.getElementById('childrenGrid');
+            const empty = document.getElementById('emptyState');
+            grid.innerHTML = "";
+
+            if (childrenData.length === 0) {
+                empty.classList.remove('hidden');
+                grid.classList.add('hidden');
+                return;
+            }
+
+            empty.classList.add('hidden');
+            grid.classList.remove('hidden');
+
+            childrenData.forEach(child => {
+                const age = calculateAge(child.dob);
+                const latestMeasure = child.measurements.length > 0 ? child.measurements[child.measurements.length - 1] : null;
+                const weight = latestMeasure ? latestMeasure.weight : "-";
+                const height = latestMeasure ? latestMeasure.height : "-";
+                
+                // Analisis Z-Score Gizi Balita Berdasarkan WHO
+                const analysis = analyzeNutritionStatus(child, latestMeasure);
+                
+                // Buat Badge Warna
+                let badgeClass = "bg-slate-200 text-slate-700";
+                let badgeLabel = "Belum Ada Data";
+                
+                if (analysis) {
+                    switch (analysis.statusBmi) {
+                        case 'Gizi Baik / Normal':
+                            badgeClass = "bg-emerald-100 text-emerald-800 border-emerald-200";
+                            badgeLabel = "🟢 Normal";
+                            break;
+                        case 'Beresiko Gizi Lebih':
+                            badgeClass = "bg-yellow-100 text-yellow-800 border-yellow-200";
+                            badgeLabel = "🟡 Perlu Dipantau";
+                            break;
+                        case 'Gizi Lebih / Overweight':
+                            badgeClass = "bg-orange-100 text-orange-800 border-orange-200";
+                            badgeLabel = "🟣 Overweight";
+                            break;
+                        case 'Obesitas':
+                            badgeClass = "bg-purple-100 text-purple-800 border-purple-200";
+                            badgeLabel = "⚫ Obesitas";
+                            break;
+                        case 'Gizi Kurang (Wasting)':
+                            badgeClass = "bg-rose-100 text-rose-800 border-rose-200";
+                            badgeLabel = "🔵 Underweight";
+                            break;
+                        case 'Gizi Buruk':
+                            badgeClass = "bg-red-200 text-red-900 border-red-300";
+                            badgeLabel = "🔴 Risiko Tinggi";
+                            break;
+                    }
+                    
+                    // Prioritas Deteksi Resiko Stunting (TB/U)
+                    if (analysis.statusHfa === 'Sangat Pendek (Severely Stunted)') {
+                        badgeClass = "bg-red-950 text-red-200 border-red-900";
+                        badgeLabel = "🔴 Stunting";
+                    } else if (analysis.statusHfa === 'Pendek (Stunted)') {
+                        badgeClass = "bg-orange-200 text-orange-900 border-orange-300";
+                        badgeLabel = "🟠 Risiko Stunting";
+                    }
+                }
+
+                const childCard = `
+                    <div class="bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between relative group overflow-hidden">
+                        <!-- BG Gradient Glow -->
+                        <div class="absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${child.gender === 'Laki-laki' ? 'from-sky-400 to-blue-500' : 'from-pink-400 to-rose-500'}"></div>
+                        
+                        <div>
+                            <div class="flex justify-between items-start mb-4">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-14 h-14 rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-3xl shadow-inner border border-slate-200/50">
+                                        ${child.photo ? `<img src="${child.photo}" onerror="this.innerHTML='👶'; this.src=''" class="w-full h-full object-cover">` : (child.gender === 'Laki-laki' ? '👦' : '👧')}
+                                    </div>
+                                    <div>
+                                        <h4 class="font-extrabold text-base leading-tight text-slate-800 dark:text-white group-hover:text-brand-500 transition-colors">${child.fullname}</h4>
+                                        <p class="text-xs text-slate-400 mt-1 font-semibold flex items-center gap-1">
+                                            <i class="fa-solid ${child.gender === 'Laki-laki' ? 'fa-mars text-sky-500' : 'fa-venus text-pink-500'}"></i>
+                                            <span>${child.nickname}</span>
+                                        </p>
+                                    </div>
+                                </div>
+                                <span class="px-2.5 py-1 rounded-full text-[10px] font-extrabold border ${badgeClass}">
+                                    ${badgeLabel}
+                                </span>
+                            </div>
+
+                            <div class="grid grid-cols-3 gap-2 bg-slate-50 dark:bg-slate-700/50 p-3 rounded-2xl text-center mb-4">
+                                <div>
+                                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Umur</p>
+                                    <p class="text-xs font-extrabold text-slate-700 dark:text-white mt-1">${age.years > 0 ? age.years + 'th ' : ''}${age.months}bln</p>
+                                </div>
+                                <div>
+                                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Berat</p>
+                                    <p class="text-xs font-extrabold text-slate-700 dark:text-white mt-1">${weight} kg</p>
+                                </div>
+                                <div>
+                                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tinggi</p>
+                                    <p class="text-xs font-extrabold text-slate-700 dark:text-white mt-1">${height} cm</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between border-t border-slate-100 dark:border-slate-700 pt-3 mt-2">
+                            <button onclick="selectChild('${child.id}')" class="text-xs font-bold text-brand-500 hover:text-brand-600 flex items-center space-x-1">
+                                <i class="fa-solid fa-arrow-pointer"></i>
+                                <span>Pilih Anak</span>
+                            </button>
+                            <div class="flex space-x-1">
+                                <button onclick="openAddChildModal('${child.id}')" class="p-1.5 text-slate-400 hover:text-brand-500 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" title="Edit Profil">
+                                    <i class="fa-solid fa-pen-to-square text-xs"></i>
+                                </button>
+                                <button onclick="deleteChildProfile('${child.id}', '${child.fullname}')" class="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" title="Hapus Profil">
+                                    <i class="fa-solid fa-trash text-xs"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                grid.insertAdjacentHTML('beforeend', childCard);
+            });
+        }
+
+        function initGASSyncButton() {
+  const restoreInput = document.getElementById('restoreFile');
+  if (!restoreInput) return;
+ 
+  const btn = document.createElement('button');
+  btn.id        = 'gas-sync-indicator';
+  btn.title     = 'Sinkronkan ke Spreadsheet';
+  btn.className = 'p-2.5 rounded-xl transition-colors text-slate-400';
+  btn.onclick   = () => syncToGAS('sync_all');
+  btn.innerHTML = '<i class="fa-solid fa-cloud text-lg"></i>';
+ 
+  restoreInput.insertAdjacentElement('afterend', btn);
+}
+
+        // Peta dropdown & set banner anak terpilih
+        function updateActiveChildBanner() {
+            const banner = document.getElementById('activeChildBanner');
+            const dropdown = document.getElementById('childDropdown');
+            dropdown.innerHTML = "";
+
+            if (childrenData.length === 0) {
+                banner.classList.add('hidden');
+                return;
+            }
+
+            banner.classList.remove('hidden');
+
+            childrenData.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.id;
+                opt.innerText = c.nickname;
+                opt.selected = (c.id === activeChildId);
+                dropdown.appendChild(opt);
+            });
+
+            const activeChild = childrenData.find(c => c.id === activeChildId);
+            if (activeChild) {
+                document.getElementById('selectedChildName').innerText = activeChild.fullname;
+                document.getElementById('selectedChildAge').innerText = `${activeChild.gender} • ${getAgeString(activeChild.dob)}`;
+                document.getElementById('selectedChildAvatar').innerText = activeChild.gender === 'Laki-laki' ? '👦' : '👧';
+            }
+        }
+
+        function selectChild(id) {
+            activeChildId = id;
+            saveData();
+            updateActiveChildBanner();
+            loadActiveChildData();
+            alertToast("Anak aktif terpilih.");
+            switchTab('analisis');
+        }
+
+        function changeActiveChild(id) {
+            activeChildId = id;
+            saveData();
+            updateActiveChildBanner();
+            loadActiveChildData();
+            alertToast("Berhasil mengganti anak aktif.");
+            // Trigger refresh halaman saat ganti anak
+            const visibleSection = ['view-dashboard', 'view-input-harian', 'view-input-fisik', 'view-analisis', 'view-nutrisi']
+                .find(id => !document.getElementById(id).classList.contains('hidden'));
+            if (visibleSection === 'view-analisis' || visibleSection === 'view-nutrisi') {
+                loadActiveChildData();
+            }
+        }
+
+        // --- CORE LOGIC: INPUT BULANAN / PERKEMBANGAN FISIK ---
+        function saveGrowthMeasurement(e) {
+            e.preventDefault();
+            if (!activeChildId) {
+                alertToast("Pilih profil anak terlebih dahulu!", "error");
+                return;
+            }
+
+            const activeChild = childrenData.find(c => c.id === activeChildId);
+            const dateVal = document.getElementById('measure_date').value;
+            const weightVal = parseFloat(document.getElementById('measure_weight').value);
+            const heightVal = parseFloat(document.getElementById('measure_height').value);
+            const headVal = parseFloat(document.getElementById('measure_head').value) || 0;
+            const muacVal = parseFloat(document.getElementById('measure_muac').value) || 0;
+            const photoVal = document.getElementById('measure_photo').value || "";
+
+            // Cek apakah tanggal ukur mendahului tanggal lahir
+            if (new Date(dateVal) < new Date(activeChild.dob)) {
+                alertToast("Tanggal pengukuran tidak boleh mendahului tanggal lahir anak!", "error");
+                return;
+            }
+
+            const measure = {
+                id: 'm_' + Date.now(),
+                date: dateVal,
+                weight: weightVal,
+                height: heightVal,
+                head: headVal,
+                muac: muacVal,
+                photo: photoVal
+            };
+
+            // Hapus duplikat tanggal jika diinput ulang
+            activeChild.measurements = activeChild.measurements.filter(m => m.date !== dateVal);
+            activeChild.measurements.push(measure);
+            // Urutkan berdasarkan tanggal
+            activeChild.measurements.sort((a,b) => new Date(a.date) - new Date(b.date));
+
+            saveData();
+            const activeChild2 = childrenData.find(c => c.id === activeChildId);
+            syncToGAS('sync_measurement', { childId: activeChildId, childName: activeChild2.nickname, measurement: measure });
+            alertToast("Pengukuran fisik berhasil disimpan!");
+            document.getElementById('growthForm').reset();
+            const todayStr = new Date().toISOString().split('T')[0];
+            document.getElementById('measure_date').value = todayStr;
+            
+            renderDashboard();
+            loadActiveChildData();
+            initGASSyncButton();
+        }
+
+        function deleteMeasurement(measureId) {
+            if (confirm("Hapus data pengukuran ini?")) {
+                const activeChild = childrenData.find(c => c.id === activeChildId);
+                activeChild.measurements = activeChild.measurements.filter(m => m.id !== measureId);
+                saveData();
+                renderDashboard();
+                loadActiveChildData();
+                alertToast("Pengukuran terhapus.", "warning");
+            }
+        }
+
+        // --- CORE LOGIC: CATATAN HARIAN ---
+        function saveDailyNote(e) {
+            e.preventDefault();
+            if (!activeChildId) {
+                alertToast("Pilih profil anak terlebih dahulu!", "error");
+                return;
+            }
+
+            const activeChild = childrenData.find(c => c.id === activeChildId);
+            const note = {
+                id: 'd_' + Date.now(),
+                date: document.getElementById('daily_date').value,
+                sleep: parseFloat(document.getElementById('daily_sleep').value),
+                active: parseInt(document.getElementById('daily_active').value),
+                appetite: document.getElementById('daily_appetite').value,
+                milk: parseInt(document.getElementById('daily_milk').value) || 0,
+                bak: parseInt(document.getElementById('daily_bak').value) || 0,
+                bab: document.getElementById('daily_bab').value,
+                symptoms: document.getElementById('daily_symptoms').value || "Sehat / Tidak ada"
+            };
+
+            // Validasi tanggal harian
+            if (new Date(note.date) < new Date(activeChild.dob)) {
+                alertToast("Tanggal catatan tidak boleh sebelum hari lahir anak!", "error");
+                return;
+            }
+
+            if (!activeChild.dailyNotes) activeChild.dailyNotes = [];
+            activeChild.dailyNotes = activeChild.dailyNotes.filter(n => n.date !== note.date);
+            activeChild.dailyNotes.push(note);
+            activeChild.dailyNotes.sort((a,b) => new Date(b.date) - new Date(a.date)); // descending terbaru diatas
+
+            saveData();
+            const activeChildNote = childrenData.find(c => c.id === activeChildId);
+            syncToGAS('sync_daily', { childId: activeChildId, childName: activeChildNote.nickname, note });
+            alertToast("Catatan harian berhasil disimpan!");
+            document.getElementById('dailyForm').reset();
+            const todayStr = new Date().toISOString().split('T')[0];
+            document.getElementById('daily_date').value = todayStr;
+            
+            loadActiveChildData();
+        }
+
+        function deleteDailyNote(noteId) {
+            if (confirm("Hapus catatan harian ini?")) {
+                const activeChild = childrenData.find(c => c.id === activeChildId);
+                activeChild.dailyNotes = activeChild.dailyNotes.filter(n => n.id !== noteId);
+                saveData();
+                loadActiveChildData();
+                alertToast("Catatan harian terhapus.", "warning");
+            }
+        }
+
+        // --- WHO GROWTH ANALYSIS STANDARDS (APPROXIMATION BY ALGORITHM) ---
+        // Menghitung standar deviasi Z-score secara ringkas untuk anak 0-5 tahun (60 bulan)
+        // Berdasarkan pedoman berat/tinggi median & simpangan baku WHO untuk Laki-laki/Perempuan
+        function getWhoReference(gender, ageMonths) {
+            const isBoy = (gender === 'Laki-laki');
+            
+            // Hampiran deret median/SD WHO dari 0 s/d 60 bulan
+            // Model polinomial/interpolasi sederhana untuk mensimulasikan kurva WHO asli
+            // BB median lahir s/d 5 tahun
+            let medW = 3.3 + (ageMonths * 0.45) - (Math.pow(ageMonths, 2) * 0.0035);
+            if (!isBoy) medW = 3.2 + (ageMonths * 0.42) - (Math.pow(ageMonths, 2) * 0.0033);
+            
+            // Batas +/- 2 Standar Deviasi Berat
+            const sdBoyW = 0.4 + (ageMonths * 0.05);
+            const sdGirlW = 0.4 + (ageMonths * 0.045);
+            const sdW = isBoy ? sdBoyW : sdGirlW;
+
+            // TB median lahir s/d 5 tahun
+            let medH = 49.9 + (ageMonths * 1.5) - (Math.pow(ageMonths, 2) * 0.013);
+            if (!isBoy) medH = 49.1 + (ageMonths * 1.48) - (Math.pow(ageMonths, 2) * 0.013);
+            
+            // Batas +/- 2 SD Tinggi
+            const sdH = 1.8 + (ageMonths * 0.05);
+
+            // IMT median (BB / (TB^2))
+            let medBmi = 13.5 + (ageMonths < 12 ? (12 - ageMonths)*0.15 : (ageMonths - 12)*(-0.04));
+            if (ageMonths > 24) medBmi = 15.5 - ((ageMonths - 24) * 0.03);
+            const sdBmi = 1.1;
+
+            return {
+                wMed: Math.round(medW * 10) / 10,
+                wMin: Math.round((medW - (2 * sdW)) * 10) / 10,
+                wMax: Math.round((medW + (2 * sdW)) * 10) / 10,
+                hMed: Math.round(medH * 10) / 10,
+                hMin: Math.round((medH - (2 * sdH)) * 10) / 10,
+                hMax: Math.round((medH + (2 * sdH)) * 10) / 10,
+                bmiMed: Math.round(medBmi * 10) / 10,
+                bmiMin: Math.round((medBmi - (2 * sdBmi)) * 10) / 10,
+                bmiMax: Math.round((medBmi + (2 * sdBmi)) * 10) / 10
+            };
+        }
+
+        function analyzeNutritionStatus(child, measure) {
+            if (!measure) return null;
+            const ageInfo = calculateAge(child.dob, measure.date);
+            const ageMonths = Math.min(60, ageInfo.totalMonths); // Limit standar 5 tahun
+            const ref = getWhoReference(child.gender, ageMonths);
+
+            const weight = measure.weight;
+            const height = measure.height;
+            const bmi = weight / Math.pow(height / 100, 2);
+            const head = measure.head;
+
+            // 1. Berat Badan Menurut Umur (BB/U)
+            let statusWfa = "Normal";
+            if (weight < ref.wMin) {
+                statusWfa = (weight < (ref.wMin - 1.5)) ? "Sangat Kurang" : "Kurang";
+            } else if (weight > ref.wMax) {
+                statusWfa = "Risiko Berat Lebih";
+            }
+
+            // 2. Tinggi Badan Menurut Umur (TB/U) - Indikator Stunting
+            let statusHfa = "Normal";
+            if (height < ref.hMin) {
+                statusHfa = (height < (ref.hMin - 2.5)) ? "Sangat Pendek (Severely Stunted)" : "Pendek (Stunted)";
+            } else if (height > ref.hMax) {
+                statusHfa = "Tinggi";
+            }
+
+            // 3. IMT Menurut Umur (IMT/U) & Berat menurut Tinggi (BB/TB)
+            let statusBmi = "Gizi Baik / Normal";
+            if (bmi < ref.bmiMin) {
+                statusBmi = (bmi < (ref.bmiMin - 1.5)) ? "Gizi Buruk" : "Gizi Kurang (Wasting)";
+            } else if (bmi > ref.bmiMax) {
+                if (bmi > (ref.bmiMax + 2)) statusBmi = "Obesitas";
+                else if (bmi > (ref.bmiMax + 0.8)) statusBmi = "Gizi Lebih / Overweight";
+                else statusBmi = "Beresiko Gizi Lebih";
+            }
+
+            // 4. Lingkar Kepala
+            let statusHead = "Normal";
+            // Normal range kepala balita biasanya berada di range 34cm - 52cm
+            if (head > 0) {
+                const medHead = 34 + (ageMonths * 0.3);
+                if (head < (medHead - 3.5)) statusHead = "Mikrocephaly (Perlu Dokter)";
+                else if (head > (medHead + 3.5)) statusHead = "Macrocephaly (Perlu Dokter)";
+            }
+
+            return {
+                bmi: Math.round(bmi * 10) / 10,
+                statusWfa,
+                statusHfa,
+                statusBmi,
+                statusHead
+            };
+        }
+
+        // --- LOAD ACTIVE CHILD DATA (TAB SPESIFIK) ---
+        function loadActiveChildData() {
+            if (!activeChildId) return;
+            const child = childrenData.find(c => c.id === activeChildId);
+            if (!child) return;
+
+            const ageNow = calculateAge(child.dob);
+            const latestMeasure = child.measurements.length > 0 ? child.measurements[child.measurements.length - 1] : null;
+
+            // --- MENU PENGUKURAN TAB ---
+            // Render Tabel Riwayat Pengukuran Fisik
+            const mTable = document.getElementById('measureHistoryTableBody');
+            mTable.innerHTML = "";
+            child.measurements.slice().reverse().forEach(m => {
+                const ageAtM = getAgeString(child.dob, m.date);
+                const analysis = analyzeNutritionStatus(child, m);
+                const bmiVal = analysis ? analysis.bmi : "-";
+                const statusGizi = analysis ? analysis.statusBmi : "-";
+                
+                const row = `
+                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                        <td class="py-3 px-2 font-semibold">${m.date}</td>
+                        <td class="py-3 px-2 text-xs text-slate-500">${ageAtM}</td>
+                        <td class="py-3 px-2 font-bold">${m.weight} kg</td>
+                        <td class="py-3 px-2 font-bold">${m.height} cm</td>
+                        <td class="py-3 px-2">${bmiVal}</td>
+                        <td class="py-3 px-2">${m.head || "-"} cm</td>
+                        <td class="py-3 px-2">${m.muac || "-"} cm</td>
+                        <td class="py-3 px-2">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold ${statusGizi.includes('Normal') ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">
+                                ${statusGizi}
+                            </span>
+                        </td>
+                        <td class="py-3 px-2 text-right">
+                            <button onclick="deleteMeasurement('${m.id}')" class="text-xs text-rose-500 hover:text-rose-700 font-bold">Hapus</button>
+                        </td>
+                    </tr>
+                `;
+                mTable.insertAdjacentHTML('beforeend', row);
+            });
+
+            // --- TAB CATATAN HARIAN ---
+            const dTable = document.getElementById('dailyHistoryTableBody');
+            dTable.innerHTML = "";
+            const recentNotes = child.dailyNotes || [];
+            recentNotes.forEach(n => {
+                const row = `
+                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors text-xs">
+                        <td class="py-3 px-2 font-semibold">${n.date}</td>
+                        <td class="py-3 px-2 font-bold text-indigo-500">${n.sleep} Jam</td>
+                        <td class="py-3 px-2 font-bold text-sky-500">${n.active} Mnt</td>
+                        <td class="py-3 px-2">${n.appetite}</td>
+                        <td class="py-3 px-2">${n.milk} ml</td>
+                        <td class="py-3 px-2">${n.bak}x / ${n.bab}</td>
+                        <td class="py-3 px-2 italic">${n.symptoms}</td>
+                        <td class="py-3 px-2 text-right">
+                            <button onclick="deleteDailyNote('${n.id}')" class="text-[10px] text-rose-500 font-bold">Hapus</button>
+                        </td>
+                    </tr>
+                `;
+                dTable.insertAdjacentHTML('beforeend', row);
+            });
+
+            // --- TAB ANALISIS & TARGET ---
+            // Hitung Potensi Tinggi Genetik (MPH)
+            const mph = calculateMPH(child.gender, child.father_height, child.mother_height);
+            document.getElementById('genParentHeights').innerText = `Ayah: ${child.father_height || '-'}cm, Ibu: ${child.mother_height || '-'}cm`;
+            document.getElementById('genTargetHeight').innerText = mph.target > 0 ? `${mph.target} cm` : "-";
+            document.getElementById('genNormalRange').innerText = mph.target > 0 ? `${mph.rangeMin} cm – ${mph.rangeMax} cm` : "-";
+
+            // Target WHO Sesuai Umur Saat Ini
+            const refCurrent = getWhoReference(child.gender, Math.min(60, ageNow.totalMonths));
+            document.getElementById('targetWeight').innerText = `${refCurrent.wMin} - ${refCurrent.wMed} - ${refCurrent.wMax}`;
+            document.getElementById('targetHeightCurrent').innerText = `${refCurrent.hMin} - ${refCurrent.hMed} - ${refCurrent.hMax}`;
+            document.getElementById('targetBmi').innerText = `${refCurrent.bmiMed}`;
+
+            // --- GRAFIK WHO (CHART.JS) ---
+            renderAllCharts();
+
+            // --- REKOMENDASI NUTRISI CERDAS ---
+            const wVal = latestMeasure ? latestMeasure.weight : child.birth_weight;
+            const hVal = latestMeasure ? latestMeasure.height : child.birth_length;
+            calculateSmartNutrients(ageNow, wVal, hVal, child.gender);
+
+            // --- TIDUR & AKTIVITAS HARIAN ---
+            const latestDaily = recentNotes.length > 0 ? recentNotes[0] : null;
+            evaluateSleepAndActivity(latestDaily, ageNow);
+
+            // --- DETEKSI ALERT DINI ---
+            runDiagnosticAlerts(child);
+        }
+
+        // --- SISTEM NOTIFIKASI / DETEKSI DINI ALERT ---
+        function runDiagnosticAlerts(child) {
+            const systemAlerts = document.getElementById('systemAlerts');
+            const ageNow = calculateAge(child.dob);
+            
+            // Hapus isi alert sebelumnya
+            systemAlerts.innerHTML = "";
+            let alertCount = 0;
+
+            if (child.measurements.length < 2) {
+                // Info awal
+                addSystemAlertUI("👶 Belum memiliki riwayat pengukuran berkala yang cukup untuk deteksi tren pertumbuhan stagnan. Lakukan pengukuran minimal sebulan sekali.", "warning");
+                return;
+            }
+
+            const latestM = child.measurements[child.measurements.length - 1];
+            const prevM1 = child.measurements[child.measurements.length - 2];
+            const prevM2 = child.measurements[child.measurements.length - 3] || null;
+
+            // 1. Deteksi Berat Badan tidak naik selama 2 bulan terakhir
+            if (prevM2) {
+                const diffWeightRecent = latestM.weight - prevM1.weight;
+                const diffWeightPrev = prevM1.weight - prevM2.weight;
+                if (diffWeightRecent <= 0 && diffWeightPrev <= 0) {
+                    addSystemAlertUI(`⚠️ Berat Badan ${child.nickname} stagnan atau turun selama 2 bulan berturut-turut. Segera konsultasikan ke Dokter Spesialis Anak untuk mencegah Faltering Growth (gagal tumbuh).`, "error");
+                    alertCount++;
+                }
+            }
+
+            // 2. Deteksi Tinggi Badan stagnan selama 3 bulan
+            if (child.measurements.length >= 4) {
+                const prevM3 = child.measurements[child.measurements.length - 4];
+                const hDiff1 = latestM.height - prevM1.height;
+                const hDiff2 = prevM1.height - prevM2.height;
+                const hDiff3 = prevM2.height - prevM3.height;
+                if (hDiff1 <= 0 && hDiff2 <= 0 && hDiff3 <= 0) {
+                    addSystemAlertUI(`⚠️ Tinggi badan ${child.nickname} tidak bertambah selama 3 bulan terakhir. Risiko stunting perlu dievaluasi.`, "error");
+                    alertCount++;
+                }
+            }
+
+            // 3. Deteksi status stunting / wasting terkini
+            const analysis = analyzeNutritionStatus(child, latestM);
+            if (analysis) {
+                if (analysis.statusHfa.includes("Stunted")) {
+                    addSystemAlertUI(`🔴 Terdeteksi Risiko Stunting: Status Tinggi Badan menurut Umur (TB/U) menunjukkan kategori '${analysis.statusHfa}'. Tingkatkan asupan Protein Hewani (Telur, Susu, Daging).`, "error");
+                    alertCount++;
+                }
+                if (analysis.statusBmi.includes("Wasting") || analysis.statusBmi === "Gizi Buruk") {
+                    addSystemAlertUI(`🔴 Terdeteksi Risiko Wasting (Gizi Kurang/Buruk): Segera penuhi kebutuhan kalori harian anak Anda untuk mencegah penurunan imunitas tubuh.`, "error");
+                    alertCount++;
+                }
+                if (analysis.statusBmi === "Obesitas") {
+                    addSystemAlertUI(`⚫ Terdeteksi Obesitas: Batasi konsumsi camilan berpemanis buatan dan perbanyak menit aktifitas bergerak harian si kecil.`, "warning");
+                    alertCount++;
+                }
+            }
+
+            // Tampilkan panel alerts jika ada pesan
+            if (alertCount > 0) {
+                systemAlerts.classList.remove('hidden');
+            }
+        }
+
+        function addSystemAlertUI(message, type) {
+            const systemAlerts = document.getElementById('systemAlerts');
+            systemAlerts.classList.remove('hidden');
+            
+            let bgClass = "bg-rose-50 border-rose-200 text-rose-800 dark:bg-rose-950/20 dark:border-rose-900 dark:text-rose-400";
+            let icon = '<i class="fa-solid fa-triangle-exclamation text-rose-500"></i>';
+            if (type === "warning") {
+                bgClass = "bg-amber-50 border-amber-200 text-amber-800 dark:bg-amber-950/20 dark:border-amber-900 dark:text-amber-400";
+                icon = '<i class="fa-solid fa-bell text-amber-500"></i>';
+            }
+
+            const card = `
+                <div class="flex items-start space-x-3 p-3.5 rounded-2xl border ${bgClass} text-xs leading-relaxed">
+                    <span class="text-base mt-0.5">${icon}</span>
+                    <div class="flex-1 font-bold">
+                        ${message}
+                    </div>
+                </div>
+            `;
+            systemAlerts.insertAdjacentHTML('beforeend', card);
+        }
+
+        // --- CALCULATE SMART NUTRIENTS (DYNAMIC DIETARY RECOMMENDATION) ---
+        function calculateSmartNutrients(ageInfo, weight, height, gender) {
+            // Formula Kebutuhan Energi Anak (AKG Indonesia & WHO)
+            // Menghitung estimasi kalori basali + aktivitas sesuai usia anak
+            let ageInYears = ageInfo.totalMonths / 12;
+            let energy = 0;
+            
+            if (ageInYears < 1) {
+                energy = weight * 100; // ~100-110 kkal/kgBB
+            } else if (ageInYears >= 1 && ageInYears < 3) {
+                energy = 1125;
+            } else if (ageInYears >= 3 && ageInYears < 6) {
+                energy = 1400;
+            } else {
+                energy = 1600;
+            }
+
+            // Proporsi Makronutrisi: Protein (15%), Lemak (30%), Karbohidrat (55%)
+            let protein = (energy * 0.15) / 4;
+            let fat = (energy * 0.30) / 9;
+            let carb = (energy * 0.55) / 4;
+
+            // Kebutuhan zat mikro & air merujuk AKG standar balita
+            let fiber = 10 + (ageInYears * 1); // Pendekatan kebutuhan serat
+            let water = 100 * Math.min(10, weight); // Formula Holliday-Segar sederhana untuk air
+            if (weight > 10) water = 1000 + ((weight - 10) * 50);
+
+            let calcium = 650; // mg
+            let iron = ageInYears < 1 ? 11 : 7; // mg
+            let zinc = 3; // mg
+            let vitA = "400 RE";
+            let vitD = "15 mcg";
+            let vitC = "40 mg";
+
+            if (ageInYears >= 4) {
+                calcium = 1000;
+                iron = 10;
+                zinc = 5;
+                vitA = "450 RE";
+                vitC = "45 mg";
+            }
+
+            // Update UI Nutrisi
+            document.getElementById('nut_energy').innerText = Math.round(energy);
+            document.getElementById('nut_protein').innerText = Math.round(protein);
+            document.getElementById('nut_fat').innerText = Math.round(fat);
+            document.getElementById('nut_carb').innerText = Math.round(carb);
+            
+            document.getElementById('nut_fiber').innerText = Math.round(fiber) + " g";
+            document.getElementById('nut_water').innerText = Math.round(water) + " ml";
+            document.getElementById('nut_calcium').innerText = calcium + " mg";
+            document.getElementById('nut_iron').innerText = iron + " mg";
+            document.getElementById('nut_zinc').innerText = zinc + " mg";
+            document.getElementById('nut_vita').innerText = vitA;
+            document.getElementById('nut_vitd').innerText = vitD;
+            document.getElementById('nut_vitc').innerText = vitC;
+
+            // Render Menu Makan Harian Rekomendasi Otomatis
+            renderDailyMenuCard(energy);
+        }
+
+        function renderDailyMenuCard(totalKalori) {
+            const container = document.getElementById('menuMakanContainer');
+            container.innerHTML = "";
+
+            // Proporsi kalori per hidangan
+            const portions = [
+                { title: "🌅 Sarapan Pagi (25%)", percent: 0.25, menu: "Bubur Havermut Susu dengan topping Pisang & 1 butir Telur rebus" },
+                { title: "🍪 Selingan Pagi (10%)", percent: 0.10, menu: "Potongan Melon segar / Puree Pepaya manis" },
+                { title: "🍱 Makan Siang (30%)", percent: 0.30, menu: "Nasi Tim Ayam Cincang, Wortel kukus, Kaldu jamur alami & Tahu sutra" },
+                { title: "🍇 Selingan Sore (10%)", percent: 0.10, menu: "Biskuit Gandum Bayi / Puding Susu Rumahan" },
+                { title: "🌃 Makan Malam (20%)", percent: 0.20, menu: "Kentang Tumbuk (Mashed Potato), Fillet Ikan Salmon/Kembung panggang & Brokoli rebus" },
+                { title: "🥛 Sebelum Tidur (5%)", percent: 0.05, menu: "ASI Eksklusif / Segelas Susu Formula hangat" }
+            ];
+
+            portions.forEach(p => {
+                const pCal = Math.round(totalKalori * p.percent);
+                const pProt = Math.round((pCal * 0.15) / 4);
+                const pCarb = Math.round((pCal * 0.55) / 4);
+                const pFat = Math.round((pCal * 0.30) / 9);
+
+                const card = `
+                    <div class="bg-slate-50 dark:bg-slate-700/40 p-4 rounded-2xl border border-slate-100 dark:border-slate-700 space-y-2">
+                        <h4 class="font-extrabold text-sm text-brand-600 dark:text-brand-400">${p.title}</h4>
+                        <p class="text-xs font-bold text-slate-800 dark:text-white">${p.menu}</p>
+                        <div class="grid grid-cols-4 gap-1 text-[10px] text-center pt-2 border-t border-slate-200 dark:border-slate-600">
+                            <div>
+                                <p class="text-slate-400 font-bold uppercase">Kalori</p>
+                                <p class="font-extrabold text-slate-700 dark:text-white">${pCal} kkal</p>
+                            </div>
+                            <div>
+                                <p class="text-slate-400 font-bold uppercase">Prot</p>
+                                <p class="font-extrabold text-slate-700 dark:text-white">${pProt}g</p>
+                            </div>
+                            <div>
+                                <p class="text-slate-400 font-bold uppercase">Karbo</p>
+                                <p class="font-extrabold text-slate-700 dark:text-white">${pCarb}g</p>
+                            </div>
+                            <div>
+                                <p class="text-slate-400 font-bold uppercase">Lemak</p>
+                                <p class="font-extrabold text-slate-700 dark:text-white">${pFat}g</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', card);
+            });
+        }
+
+        // --- EVALUATE SLEEP AND ACTIVITY ---
+        function evaluateSleepAndActivity(latestDaily, ageInfo) {
+            const ageInYears = ageInfo.totalMonths / 12;
+            
+            // Set Target Tidur berdasar rekomendasi National Sleep Foundation sesuai umur
+            let targetMin = 14;
+            let targetMax = 17;
+            if (ageInYears >= 0.3 && ageInYears < 1) { targetMin = 12; targetMax = 15; }
+            else if (ageInYears >= 1 && ageInYears < 3) { targetMin = 11; targetMax = 14; }
+            else if (ageInYears >= 3 && ageInYears < 6) { targetMin = 10; targetMax = 13; }
+            
+            document.getElementById('sleep_target_val').innerText = `${targetMin}-${targetMax} Jam`;
+
+            const sleepAct = latestDaily ? latestDaily.sleep : targetMin; // default normal jika belum isi harian
+            document.getElementById('sleep_actual_val').innerText = `${sleepAct} Jam`;
+
+            const deficit = Math.max(0, targetMin - sleepAct);
+            document.getElementById('sleep_deficit_val').innerText = `${Math.round(deficit * 10)/10} Jam`;
+
+            let sleepBadge = document.getElementById('sleep_status_badge');
+            if (deficit === 0) {
+                sleepBadge.className = "px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800";
+                sleepBadge.innerText = "🟢 Cukup";
+            } else if (deficit > 0 && deficit <= 2) {
+                sleepBadge.className = "px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800";
+                sleepBadge.innerText = "🟡 Kurang";
+            } else {
+                sleepBadge.className = "px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800";
+                sleepBadge.innerText = "🔴 Sangat Kurang";
+            }
+
+            // Aktivitas Fisik (Target standar WHO 60 menit per hari)
+            const activeAct = latestDaily ? latestDaily.active : 60;
+            document.getElementById('activity_actual_val').innerText = `${activeAct} Menit`;
+
+            let actBadge = document.getElementById('activity_status_badge');
+            if (activeAct >= 60) {
+                actBadge.className = "px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800";
+                actBadge.innerText = "🟢 Cukup";
+            } else if (activeAct >= 30 && activeAct < 60) {
+                actBadge.className = "px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800";
+                actBadge.innerText = "🟡 Kurang";
+            } else {
+                actBadge.className = "px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800";
+                actBadge.innerText = "🔴 Sedentary";
+            }
+        }
+
+        // --- RENDER ALL CHART.JS INSTANCES ---
+        function renderAllCharts() {
+            const child = childrenData.find(c => c.id === activeChildId);
+            if (!child || child.measurements.length === 0) return;
+
+            const isDark = document.documentElement.classList.contains('dark');
+            const gridColor = isDark ? '#334155' : '#e2e8f0';
+            const labelColor = isDark ? '#94a3b8' : '#64748b';
+
+            // Ekstrak data pengukuran anak
+            const labels = child.measurements.map(m => m.date);
+            const weights = child.measurements.map(m => m.weight);
+            const heights = child.measurements.map(m => m.height);
+            const bmis = child.measurements.map(m => m.weight / Math.pow(m.height / 100, 2));
+
+            // Generate kurva target WHO (Median ideal) untuk pembanding tiap tanggal ukur anak
+            const targetWeights = child.measurements.map(m => {
+                const age = calculateAge(child.dob, m.date);
+                return getWhoReference(child.gender, Math.min(60, age.totalMonths)).wMed;
+            });
+            const targetHeights = child.measurements.map(m => {
+                const age = calculateAge(child.dob, m.date);
+                return getWhoReference(child.gender, Math.min(60, age.totalMonths)).hMed;
+            });
+            const targetBmis = child.measurements.map(m => {
+                const age = calculateAge(child.dob, m.date);
+                return getWhoReference(child.gender, Math.min(60, age.totalMonths)).bmiMed;
+            });
+
+            // Opsi Desain Dasar Chart
+            const baseOptions = (title) => ({
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { labels: { color: labelColor, font: { family: 'Plus Jakarta Sans', weight: 'bold' } } }
+                },
+                scales: {
+                    x: { grid: { color: gridColor }, ticks: { color: labelColor } },
+                    y: { grid: { color: gridColor }, ticks: { color: labelColor } }
+                }
+            });
+
+            // 1. Chart BB/U
+            if (chartWFAInstance) chartWFAInstance.destroy();
+            chartWFAInstance = new Chart(document.getElementById('chartWFA').getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: 'Berat Badan Anak (kg)', data: weights, borderColor: '#0ea5e9', backgroundColor: '#e0f2fe', tension: 0.2, borderWidth: 3 },
+                        { label: 'Target Median WHO', data: targetWeights, borderColor: '#cbd5e1', borderDash: [5, 5], tension: 0.1, borderWidth: 1.5 }
+                    ]
+                },
+                options: baseOptions()
+            });
+
+            // 2. Chart TB/U
+            if (chartHFAInstance) chartHFAInstance.destroy();
+            chartHFAInstance = new Chart(document.getElementById('chartHFA').getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: 'Tinggi Badan Anak (cm)', data: heights, borderColor: '#ec4899', backgroundColor: '#fce7f3', tension: 0.2, borderWidth: 3 },
+                        { label: 'Target Median WHO', data: targetHeights, borderColor: '#cbd5e1', borderDash: [5, 5], tension: 0.1, borderWidth: 1.5 }
+                    ]
+                },
+                options: baseOptions()
+            });
+
+            // 3. Chart IMT/U
+            if (chartBFAInstance) chartBFAInstance.destroy();
+            chartBFAInstance = new Chart(document.getElementById('chartBFA').getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: 'Indeks Massa Tubuh (IMT)', data: bmis, borderColor: '#a855f7', backgroundColor: '#f3e8ff', tension: 0.2, borderWidth: 3 },
+                        { label: 'Target Median WHO', data: targetBmis, borderColor: '#cbd5e1', borderDash: [5, 5], tension: 0.1, borderWidth: 1.5 }
+                    ]
+                },
+                options: baseOptions()
+            });
+
+            // 4. Chart Realisasi Individual Terkini
+            if (chartIndInstance) chartIndInstance.destroy();
+            chartIndInstance = new Chart(document.getElementById('chartIndividual').getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: 'Berat Badan (kg)', data: weights, backgroundColor: 'rgba(14, 165, 233, 0.65)', borderRadius: 8 },
+                        { label: 'Tinggi Badan (cm)', data: heights, backgroundColor: 'rgba(236, 72, 153, 0.65)', borderRadius: 8 }
+                    ]
+                },
+                options: baseOptions()
+            });
+        }
+
+        // --- EXPORT TO CSV (EXCEL FRIENDLY) ---
+        function exportToCSV() {
+            const child = childrenData.find(c => c.id === activeChildId);
+            if (!child || child.measurements.length === 0) {
+                alertToast("Belum ada data untuk diekspor.", "error");
+                return;
+            }
+
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "Tanggal Pengukuran,Berat Badan (kg),Tinggi Badan (cm),Lingkar Kepala (cm),LILA (cm),IMT\r\n";
+
+            child.measurements.forEach(m => {
+                const bmi = Math.round((m.weight / Math.pow(m.height / 100, 2)) * 10) / 10;
+                csvContent += `${m.date},${m.weight},${m.height},${m.head},${m.muac},${bmi}\r\n`;
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `Riwayat_Tumbuh_Kembang_${child.nickname}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            alertToast("File CSV (Excel) berhasil diunduh!");
+        }
+
+        // --- EXPORT TO PREMIUM REPORT PDF (USING JSPDF) ---
+        function exportToPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            const child = childrenData.find(c => c.id === activeChildId);
+            if (!child) {
+                alertToast("Pilih data anak terlebih dahulu", "error");
+                return;
+            }
+
+            const latestM = child.measurements.length > 0 ? child.measurements[child.measurements.length - 1] : null;
+            const ageStr = getAgeString(child.dob);
+
+            // Styling PDF Layout
+            doc.setFont("Helvetica", "bold");
+            doc.setFontSize(22);
+            doc.setTextColor(2, 132, 199); // Brand Sky-600
+            doc.text("LAPORAN PERKEMBANGAN ANAK", 14, 20);
+
+            doc.setFontSize(10);
+            doc.setFont("Helvetica", "normal");
+            doc.setTextColor(100);
+            doc.text("Premium Growth Tracker Suite — Standar WHO Child Growth", 14, 26);
+            doc.line(14, 28, 196, 28);
+
+            // Ringkasan Profil Anak
+            doc.setFontSize(12);
+            doc.setFont("Helvetica", "bold");
+            doc.setTextColor(50);
+            doc.text("1. PROFIL ANAK", 14, 38);
+            
+            doc.setFont("Helvetica", "normal");
+            doc.setFontSize(10);
+            doc.text(`Nama Lengkap: ${child.fullname}`, 14, 46);
+            doc.text(`Nama Panggilan: ${child.nickname}`, 14, 52);
+            doc.text(`Jenis Kelamin: ${child.gender}`, 14, 58);
+            doc.text(`Tanggal Lahir: ${child.dob} (Umur: ${ageStr})`, 14, 64);
+            doc.text(`ASI Eksklusif: ${child.asi || "-"}`, 14, 70);
+
+            // Orang Tua
+            doc.text(`Nama Ayah: ${child.father_name || "-"} (TB: ${child.father_height || "-"} cm)`, 110, 46);
+            doc.text(`Nama Ibu: ${child.mother_name || "-"} (TB: ${child.mother_height || "-"} cm)`, 110, 52);
+            
+            const mph = calculateMPH(child.gender, child.father_height, child.mother_height);
+            doc.text(`Potensi Tinggi Genetik: ${mph.target || "-"} cm`, 110, 58);
+            doc.text(`Rentang Normal Dewasa: ${mph.rangeMin || "-"} - ${mph.rangeMax || "-"} cm`, 110, 64);
+
+            doc.line(14, 76, 196, 76);
+
+            // Status Pertumbuhan Terakhir
+            doc.setFont("Helvetica", "bold");
+            doc.setFontSize(12);
+            doc.text("2. HASIL ANALISIS ANTROPOMETRI TERAKHIR", 14, 86);
+
+            doc.setFont("Helvetica", "normal");
+            doc.setFontSize(10);
+            if (latestM) {
+                const analysis = analyzeNutritionStatus(child, latestM);
+                doc.text(`Tanggal Ukur: ${latestM.date}`, 14, 94);
+                doc.text(`Berat Badan: ${latestM.weight} kg`, 14, 100);
+                doc.text(`Tinggi Badan: ${latestM.height} cm`, 14, 106);
+                doc.text(`Lingkar Kepala: ${latestM.head || "-"} cm`, 14, 112);
+                doc.text(`Lingkar Lengan (LiLA): ${latestM.muac || "-"} cm`, 14, 118);
+
+                // Z-Score Status
+                doc.text(`Status Berat/Umur (BB/U): ${analysis ? analysis.statusWfa : "-"}`, 110, 94);
+                doc.text(`Status Tinggi/Umur (TB/U): ${analysis ? analysis.statusHfa : "-"}`, 110, 100);
+                doc.text(`Status Gizi (IMT/U): ${analysis ? analysis.statusBmi : "-"}`, 110, 106);
+                doc.text(`Status Lingkar Kepala: ${analysis ? analysis.statusHead : "-"}`, 110, 112);
+            } else {
+                doc.text("Belum ada catatan riwayat fisik antropometri.", 14, 94);
+            }
+
+            doc.line(14, 126, 196, 126);
+
+            // Rekomendasi Nutrisi
+            doc.setFont("Helvetica", "bold");
+            doc.setFontSize(12);
+            doc.text("3. ESTIMASI TARGET KEBUTUHAN HARIAN", 14, 136);
+
+            doc.setFont("Helvetica", "normal");
+            doc.setFontSize(10);
+            const ageNow = calculateAge(child.dob);
+            const wVal = latestM ? latestM.weight : child.birth_weight;
+            const hVal = latestM ? latestM.height : child.birth_length;
+            
+            // Re-calc ringkas untuk PDF
+            let ageInYears = ageNow.totalMonths / 12;
+            let energy = ageInYears < 1 ? wVal * 100 : (ageInYears < 3 ? 1125 : 1400);
+            let protein = (energy * 0.15) / 4;
+            let fat = (energy * 0.30) / 9;
+            let carb = (energy * 0.55) / 4;
+
+            doc.text(`Kebutuhan Kalori Harian: ${Math.round(energy)} kkal/hari`, 14, 144);
+            doc.text(`Target Protein: ${Math.round(protein)} gram/hari`, 14, 150);
+            doc.text(`Target Lemak: ${Math.round(fat)} gram/hari`, 14, 156);
+            doc.text(`Target Karbohidrat: ${Math.round(carb)} gram/hari`, 14, 162);
+
+            doc.text(`Target Durasi Tidur: ${ageInYears < 1 ? '12-15' : (ageInYears < 3 ? '11-14' : '10-13')} Jam/hari`, 110, 144);
+            doc.text("Aktivitas Fisik: Minimal 60 menit per hari aktif bergerak", 110, 150);
+
+            doc.line(14, 172, 196, 172);
+
+            // Riwayat Tabel Sederhana
+            doc.setFont("Helvetica", "bold");
+            doc.setFontSize(12);
+            doc.text("4. DAFTAR RIWAYAT PENGUKURAN LENGKAP", 14, 182);
+
+            doc.setFont("Helvetica", "bold");
+            doc.setFontSize(9);
+            doc.text("Tanggal", 14, 192);
+            doc.text("Berat (kg)", 50, 192);
+            doc.text("Tinggi (cm)", 90, 192);
+            doc.text("LK (cm)", 130, 192);
+            doc.text("LiLA (cm)", 160, 192);
+            doc.line(14, 194, 196, 194);
+
+            doc.setFont("Helvetica", "normal");
+            let yOffset = 200;
+            child.measurements.slice(-8).forEach(m => {
+                if (yOffset < 280) {
+                    doc.text(`${m.date}`, 14, yOffset);
+                    doc.text(`${m.weight}`, 50, yOffset);
+                    doc.text(`${m.height}`, 90, yOffset);
+                    doc.text(`${m.head || "-"}`, 130, yOffset);
+                    doc.text(`${m.muac || "-"}`, 160, yOffset);
+                    yOffset += 7;
+                }
+            });
+
+            // Footer Penutup
+            doc.setFontSize(8);
+            doc.setFont("Helvetica", "italic");
+            doc.setTextColor(150);
+            doc.text("* Laporan ini dihasilkan secara otomatis melalui Growth Tracker Anak Keluarga.", 14, 285);
+
+            // Simpan file
+            doc.save(`Laporan_Pertumbuhan_${child.nickname}.pdf`);
+            alertToast("Dokumen PDF berhasil diekspor & diunduh!");
+        }
+    </script>
+</body>
+</html>
